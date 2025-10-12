@@ -1,0 +1,22 @@
+{
+  "method": "POST",
+  "url": "https://wal2.tools.gos.bio-iad.ea.com/wal/mca/Process/{session_ticket}",
+  "headers": {
+    "Accept-Charset": "UTF-8",
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "User-Agent": "{user_agent}",
+    "X-BLAZE-ID": "madden-2026-xbsx-gen5",
+    "X-Application-Key": "MADDEN-MCA",
+    "X-BLAZE-VOID-RESP": "XML",
+    "Cookie": "{ak_bmsc_cookie}",
+    "Host": "wal2.tools.gos.bio-iad.ea.com",
+    "Connection": "Keep-Alive",
+    "Accept-Encoding": "gzip"
+  },
+  "json": {
+  "apiVersion": 2,
+  "clientDevice": 3,
+  "requestInfo": "{{\"messageExpirationTime\":{message_expiration_time},\"deviceId\":\"{device_id}\",\"commandName\":\"{command_name}\",\"componentId\":{component_id},\"commandId\":{command_id},\"ipAddress\":\"{ip_address}\",\"requestPayload\":\"{request_payload}\",\"componentName\":\"{component_name}\",\"messageAuthData\":{{\"authCode\":\"{auth_code}\",\"authData\":\"{auth_data}\",\"authType\":{auth_type}}}}}"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "method": "POST",
+  "url": "https://wal2.tools.gos.bio-iad.ea.com/wal/mca/Process/{session_ticket}",
+  "headers": {
+    "Accept-Charset": "UTF-8",
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; Android SDK built for x86_64 Build/TE1A.220922.034)",
+    "X-BLAZE-ID": "madden-2025-xbsx-gen5",
+    "X-Application-Key": "MADDEN-MCA",
+    "X-BLAZE-VOID-RESP": "XML",
+    "Cookie": "ak_bmsc=PLACEHOLDER",
+    "Host": "wal2.tools.gos.bio-iad.ea.com",
+    "Connection": "Keep-Alive",
+    "Accept-Encoding": "gzip"
+  },
+  "json": {
+    "apiVersion": "2",
+    "clientDevice": "3",
+    "requestInfo": "{\"messageExpirationTime\":1759856679,\"deviceId\":\"78e245844f1098a9\",\"commandName\":\"Mobile_SearchAuctions\",\"componentId\":2050,\"commandId\":9153,\"ipAddress\":\"127.0.0.1\",\"requestPayload\":\"{}\",\"componentName\":\"mut\",\"messageAuthData\":{\"authCode\":\"ETtSkC2BGivGOPg6VbkECA==\",\"authData\":\"cq1ZL3yExdkRnhCtdW7kTbFkQkAyw4DMR48YqgQ6qBjyPFRSK4TEyAGfHL1FRvQOqW9MUmXK19cVox3sCzepGaFvUUg3l8s=\",\"authType\":17039361}}"
+  }
+}
