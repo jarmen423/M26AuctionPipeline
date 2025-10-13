@@ -1,0 +1,22 @@
+{
+  "responseInfo": {
+    "tdfid": 2615288587,
+    "tdfclass": "Blaze::Mut::Mobile_SearchAuctionsResponse",
+    "value": {
+      "details": [],
+      "responseData": {
+        "cacheTime": 1760363504566568,
+        "captchaGuid": "",
+        "captchaPrivacyMsg": "",
+        "captchaPublicKey": "",
+        "uiErrorCode": 2,
+        "messageTitle": "",
+        "message": "Unable to resume previous location in Ultimate Team. Please try again.",
+        "responseTime": 1760393167065204,
+        "captchaTimeout": "",
+        "captchaUrl": ""
+      },
+      "truncated": false
+    }
+  }
+}

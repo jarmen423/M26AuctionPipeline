@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import random
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from time import monotonic, time
 from typing import Any, AsyncIterator, Mapping, cast
 
@@ -17,7 +17,7 @@ from ea_constants import AuctionSearchResponse
 
 from companion_collect.adapters.request_template import RequestTemplate
 from companion_collect.auth.auth_pool_manager import AuthPoolManager
-from companion_collect.auth.blaze_auth import compute_message_auth
+from companion_collect.auth.blaze_auth import AuthBundle, compute_message_auth
 from companion_collect.auth.session_manager import SessionManager
 from companion_collect.auth.token_manager import TokenManager
 from companion_collect.config import Settings, get_settings
@@ -62,9 +62,15 @@ class AuctionCollector:
             self._client = client
             if self._template is None:
                 self._template = RequestTemplate.from_path(self.settings.request_template_path)
-            if self._auth_pool is None:
-                self._auth_pool = AuthPoolManager.from_default_path()
-                self._logger.info("auth_pool_auto_loaded", pool_size=self._auth_pool.pool_size())
+            if self._auth_pool is None and self.settings.use_auth_pool:
+                try:
+                    self._auth_pool = AuthPoolManager.from_default_path()
+                    self._logger.info(
+                        "auth_pool_auto_loaded",
+                        pool_size=self._auth_pool.pool_size(),
+                    )
+                except FileNotFoundError:
+                    self._logger.warning("auth_pool_not_found", path=self.settings.auth_pool_path)
 
             if self.token_manager is None:
                 self.token_manager = TokenManager.from_file(Path(self.settings.tokens_path))
@@ -89,7 +95,7 @@ class AuctionCollector:
             msg = "AuctionCollector lifecycle must be entered before fetching."
             raise RuntimeError(msg)
 
-        merged_context = {"page": self._page}
+        merged_context: dict[str, Any] = {"page": self._page}
         merged_context.update(self.settings.request_context_overrides)
         if context:
             merged_context.update(context)
@@ -133,54 +139,22 @@ class AuctionCollector:
                 if "user_agent" in session_context:
                     merged_context["user_agent"] = session_context["user_agent"]
         
-        # --- Auth pool rotation (replaces experimental compute_message_auth) ---
+        # --- Auth material ---
         if self._auth_pool:
             auth = self._auth_pool.get_next_auth()
             merged_context.setdefault("auth_code", auth.auth_code)
             merged_context.setdefault("auth_data", auth.auth_data)
-            merged_context.setdefault("auth_type", str(auth.auth_type))
+            merged_context.setdefault("auth_type", auth.auth_type)
             self._logger.debug(
                 "auth_pool_used",
                 pool_index=self._auth_pool._index,
                 pool_size=self._auth_pool.pool_size(),
             )
-        # --- Fallback: Experimental auth generation (deprecated) ---
-        elif os.getenv("COMPANION_EXPERIMENTAL_AUTH") == "1":  # opt-in gate
-            try:
-                # Provide a deterministic-ish request_id (wrap to 32-bit) for now.
-                request_id = self._request_counter & 0xFFFFFFFF
-                blaze_id = merged_context.get("blaze_id") or 0
-                bundle = compute_message_auth(
-                    b"placeholder_session_key",  # TODO: replace with real session key once login flow lands
-                    device_id=merged_context.get("device_id", "dev"),
-                    request_id=request_id,
-                    blaze_id=blaze_id,
-                    experimental=True,
-                )
-                merged_context.setdefault("auth_code", bundle.auth_code)
-                merged_context.setdefault("auth_data", bundle.auth_data)
-                # Surface nonce indirectly: decode first 8 base64 chars to show prefix for troubleshooting.
-                # Decode nonce fully for logging (first 4 bytes of encrypted blob are already XORed so we decrypt).
-                try:
-                    from companion_collect.auth.blaze_auth import decode_auth_data
-
-                    nonce_hex, _payload_json = decode_auth_data(bundle.auth_data)
-                except Exception:  # pragma: no cover - non-critical logging path
-                    nonce_hex = "unknown"
-                self._logger.debug(
-                    "auth_generated",
-                    request_id=request_id,
-                    auth_type=bundle.auth_type,
-                    nonce=nonce_hex,
-                    expires_at=bundle.expires_at.isoformat(),
-                )
-                self._request_counter += 1
-            except Exception as auth_exc:  # pragma: no cover - diagnostic path
-                self._logger.warning(
-                    "auth_generation_failed",
-                    error=str(auth_exc),
-                    error_type=auth_exc.__class__.__name__,
-                )
+        else:
+            bundle = self._generate_auth_bundle(merged_context)
+            merged_context["auth_code"] = bundle.auth_code
+            merged_context["auth_data"] = bundle.auth_data
+            merged_context["auth_type"] = bundle.auth_type
 
         try:
             request_def = self._template.render(context=merged_context)
@@ -274,6 +248,14 @@ class AuctionCollector:
 
     async def fetch_auctions(self, filters: list | None = None) -> AuctionSearchResponse:
         """Fetch M26 auctions with optional filters, handling auth refresh on expiry."""
+        if self.token_manager is None or self.session_manager is None:
+            raise RuntimeError(
+                "AuctionCollector lifecycle must be entered before fetch_auctions."
+            )
+
+        token_manager = self.token_manager
+        session_manager = self.session_manager
+
         context_path = Path(self.settings.session_context_path)
         if not context_path.exists():
             raise RuntimeError(
@@ -311,16 +293,27 @@ class AuctionCollector:
                     and ("auth" in error_str or "stale" in error_str or "expired" in error_str)
                 ):
                     self._logger.warning("auth_error_retry", attempt=attempt + 1, error=str(e))
-                    await self.token_manager.refresh_jwt()
+                    await token_manager.refresh_jwt()
 
-                    fresh_auth = self._auth_pool.get_next_auth()
-                    session_ticket = await self.session_manager.create_session_ticket(
-                        auth_code=fresh_auth.auth_code,
-                        auth_data=fresh_auth.auth_data,
-                        auth_type=fresh_auth.auth_type,
+                    if self._auth_pool:
+                        refreshed = self._auth_pool.get_next_auth()
+                        auth_code = refreshed.auth_code
+                        auth_data = refreshed.auth_data
+                        auth_type = refreshed.auth_type
+                    else:
+                        refreshed_bundle = self._generate_auth_bundle(context)
+                        auth_code = refreshed_bundle.auth_code
+                        auth_data = refreshed_bundle.auth_data
+                        auth_type = refreshed_bundle.auth_type
+
+                    session_ticket = await session_manager.create_session_ticket(
+                        auth_code=auth_code,
+                        auth_data=auth_data,
+                        auth_type=auth_type,
                     )
 
                     session_context["session_ticket"] = session_ticket
+                    context["session_ticket"] = session_ticket
                     with open(context_path, "w") as f:
                         json.dump(session_context, f, indent=2)
 
@@ -345,6 +338,63 @@ class AuctionCollector:
             )
         except asyncio.TimeoutError:
             return
+
+    def _generate_auth_bundle(self, context: Mapping[str, Any]) -> AuthBundle:
+        persona_id = self._resolve_persona_id(context)
+        expiration_raw = context.get("message_expiration_time")
+        message_expiration: datetime | None = None
+        if isinstance(expiration_raw, (int, float)):
+            message_expiration = datetime.fromtimestamp(expiration_raw, tz=timezone.utc)
+
+        request_id = self._request_counter & 0xFFFFFFFF
+        self._request_counter += 1
+
+        device_id = str(context.get("device_id") or self.settings.device_id or "444d362e8e067fe2")
+
+        bundle = compute_message_auth(
+            b"",
+            device_id=device_id,
+            request_id=request_id,
+            blaze_id=persona_id,
+            message_expiration=message_expiration,
+        )
+
+        self._logger.debug(
+            "auth_generated",
+            request_id=request_id,
+            persona_id=persona_id,
+            auth_type=bundle.auth_type,
+        )
+
+        return bundle
+
+    def _resolve_persona_id(self, context: Mapping[str, Any]) -> int:
+        for key in ("persona_id", "personaId", "blaze_persona_id", "blaze_id"):
+            value = context.get(key)
+            if value is None:
+                continue
+            try:
+                return int(str(value))
+            except (TypeError, ValueError):
+                self._logger.warning("persona_parse_failed", key=key, value=value)
+
+        if self.session_manager and self.session_manager._primary_ticket:
+            return self.session_manager._primary_ticket.blaze_id
+
+        if self.settings.m26_blaze_id:
+            try:
+                return int(str(self.settings.m26_blaze_id))
+            except (TypeError, ValueError):
+                self._logger.warning(
+                    "persona_parse_failed",
+                    key="settings.m26_blaze_id",
+                    value=self.settings.m26_blaze_id,
+                )
+
+        raise RuntimeError(
+            "Unable to derive persona_id for message auth generation."
+            " Provide persona_id in session context or settings."
+        )
 
     def stop(self) -> None:
         """Signal the collector to stop."""

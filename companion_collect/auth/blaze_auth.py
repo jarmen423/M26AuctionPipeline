@@ -40,15 +40,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 import base64
 import hashlib
-import os
 import secrets
 from typing import Final, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 import asyncio
 from functools import wraps
 
-PROCESS_DATA_CONSTANT: Final[bytes] = bytes.fromhex("00aaba021394080040f901028052f603")
-AUTH_CODE_SALT: Final[bytes] = b":SA5!FL;e12e0p[p :)\x00"
+PROCESS_DATA_CONSTANT: Final[bytes] = bytes.fromhex("634203362017bf72f70ba900c0aa4e6b")
+AUTH_CODE_SALT: Final[bytes] = bytes.fromhex("3a53413521464c3b6531326530705b70203a2900")
 STATIC_KEY: Final[str] = "05e6a7ead5584ab4"  # Observed constant in native payload builder
 
 DEFAULT_AUTH_TYPE: Final[int] = 17_039_361  # 0x01040001 in hex, observed in captures.
@@ -126,14 +125,7 @@ def compute_message_auth(
     the public signature while ignoring legacy-only arguments.
     """
 
-    del session_key, device_id, sequence  # Reserved for future deeper algorithm
-
-    if experimental is None:
-        experimental = os.getenv("COMPANION_EXPERIMENTAL_AUTH") == "1"
-    if not experimental:
-        raise RuntimeError(
-            "Experimental auth disabled. Set COMPANION_EXPERIMENTAL_AUTH=1 or pass experimental=True."
-        )
+    del session_key, device_id, sequence, experimental  # Reserved for future deeper algorithm
 
     expires_at = message_expiration or (datetime.now(tz=timezone.utc) + timedelta(minutes=5))
 

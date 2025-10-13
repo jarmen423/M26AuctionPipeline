@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     search_page_size: int = 21
     request_template_path: str = "request_templates/mobile_search_auctions.json"
     request_context_overrides: dict[str, str] = {}
+    use_auth_pool: bool = False
 
     # Auth / Companion App credentials
     auth_email: str | None = None
