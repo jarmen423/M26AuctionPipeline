@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Iterable
 
 import asyncpg
+import json
 
 from companion_collect.config import Settings, get_settings
 from companion_collect.logging import get_logger
@@ -50,8 +51,8 @@ class PostgresAuctionStore(AuctionStorage):
                 record.expires,
                 record.seller_id,
                 record.platform,
-                record.item,
-                record.raw,
+                json.dumps(record.item),
+                json.dumps(record.raw),
             )
             for record in materialized
         ]

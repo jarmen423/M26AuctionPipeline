@@ -24,11 +24,12 @@ class M26Strategy(M25Strategy):
     M26 file format is 95%+ identical to M25 (only compression changed).
     """
     
-    def __init__(self):
+    def __init__(self, platform: str = "ps5"):
         super().__init__()
         # Override only what's different
         self.version = 26
-        self.blaze_id = "madden-2026-xbsx-gen5"
+        self.platform = platform
+        self.blaze_id = M26_BLAZE_IDS.get(platform, M26_BLAZE_IDS["default"])
         
         # command_ids inherited from M25 (confirmed working)
         # If M26-specific command IDs discovered, override here:

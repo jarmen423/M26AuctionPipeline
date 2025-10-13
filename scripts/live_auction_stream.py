@@ -19,12 +19,13 @@ Before running:
     2. Ensure tokens.json is valid and not expired
 """
 
-import asyncio
 import argparse
 import json
 import sys
 from pathlib import Path
 from datetime import datetime
+
+import asyncio
 
 import httpx
 
@@ -33,6 +34,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from companion_collect.auth.token_manager import TokenManager
 from companion_collect.auth.session_manager import SessionManager
+from companion_collect.config import get_settings
+
+
+settings = get_settings()
 
 
 # API endpoint and configuration
@@ -63,9 +68,9 @@ async def search_auctions(session_ticket: str, count: int = 20) -> dict:
         "requestInfo": json.dumps({
             "messageExpirationTime": int(datetime.now().timestamp()) + 300,  # 5 min from now
             "deviceId": DEVICE_ID,
-            "commandName": "Mobile_SearchAuctions",
-            "componentId": 2,
-            "commandId": 123,
+            "commandName": settings.m26_command_name,
+            "componentId": settings.m26_component_id,
+            "commandId": settings.m26_command_id,
             "ipAddress": "127.0.0.1",
             "requestPayload": json.dumps({
                 "count": count,
@@ -86,7 +91,7 @@ async def search_auctions(session_ticket: str, count: int = 20) -> dict:
         "Accept": "application/json",
         "Content-Type": "application/json",
         "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; Android SDK built for x86_64 Build/TE1A.220922.034)",
-        "X-BLAZE-ID": "madden-2025-xbsx-gen5",
+    "X-BLAZE-ID": settings.m26_blaze_id,
         "X-Application-Key": "MADDEN-MCA",
         "X-BLAZE-VOID-RESP": "XML",
     }
@@ -132,7 +137,9 @@ async def live_stream(interval: int = 10):
     print()
     
     # Initialize token manager
-    tokens_path = Path(__file__).parent.parent / "research" / "captures" / "tokens.json"
+    tokens_path = Path(settings.tokens_path)
+    if not tokens_path.is_absolute():
+        tokens_path = Path(__file__).parent.parent / tokens_path
     
     if not tokens_path.exists():
         print("❌ Tokens file not found!")

@@ -44,6 +44,9 @@ import os
 import secrets
 from typing import Final, Optional, Tuple
 from datetime import datetime, timedelta, timezone
+import asyncio
+from functools import wraps
+
 PROCESS_DATA_CONSTANT: Final[bytes] = bytes.fromhex("00aaba021394080040f901028052f603")
 AUTH_CODE_SALT: Final[bytes] = b":SA5!FL;e12e0p[p :)\x00"
 STATIC_KEY: Final[str] = "05e6a7ead5584ab4"  # Observed constant in native payload builder
@@ -153,6 +156,116 @@ def compute_message_auth(
     )
 
 
+def delta_refresh(
+    existing_bundle: AuthBundle,
+    *,
+    request_id: int,
+    blaze_id: int,
+    additional_data: str | None = None,
+    message_expiration: datetime | None = None,
+    nonce_override: bytes | None = None,
+) -> AuthBundle:
+    """
+    Perform delta refresh on an existing AuthBundle by generating a new nonce
+    and recomputing auth_code/auth_data without full session re-authentication.
+    
+    Builds on snallabot patterns for efficient token updates on 401/403 errors.
+    Reuses existing auth_type and expiration (or overrides).
+    """
+    expires_at = message_expiration or existing_bundle.expires_at
+
+    nonce = nonce_override or secrets.token_bytes(4)
+    if len(nonce) != 4:
+        raise ValueError("nonce_override must be exactly 4 bytes if provided")
+
+    plaintext = nonce + _build_payload(request_id=request_id, blaze_id=blaze_id, additional=additional_data)
+    encrypted = _process_data(plaintext)
+    auth_code_raw = _compute_auth_code(encrypted)
+
+    auth_code_b64 = base64.b64encode(auth_code_raw).decode("ascii")
+    auth_data_b64 = base64.b64encode(encrypted).decode("ascii")
+
+    return AuthBundle(
+        auth_code=auth_code_b64,
+        auth_data=auth_data_b64,
+        auth_type=existing_bundle.auth_type,
+        expires_at=expires_at,
+    )
+
+
+def retry_on_error(max_retries: int = 3, base_backoff: float = 1.0):
+    """
+    Decorator for async retry with exponential backoff on errors (e.g., for 401/403 handling at auth level).
+    Runs sync function in thread pool.
+    """
+    def decorator(f):
+        @wraps(f)
+        async def wrapper(*args, **kwargs):
+            last_exception = None
+            for attempt in range(max_retries):
+                try:
+                    # Run sync f in thread to allow async context
+                    return await asyncio.to_thread(f, *args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    if attempt < max_retries - 1:
+                        sleep_time = base_backoff * (2 ** attempt)
+                        await asyncio.sleep(sleep_time)
+                    else:
+                        raise last_exception
+            return None  # Unreachable
+        return wrapper
+    return decorator
+
+
+@retry_on_error(max_retries=3, base_backoff=2.0)
+async def compute_message_auth_async(
+    session_key: bytes,
+    *,
+    device_id: str,
+    request_id: int,
+    blaze_id: int,
+    additional_data: str | None = None,
+    message_expiration: datetime | None = None,
+    sequence: int | None = None,
+    experimental: bool | None = None,
+    nonce_override: bytes | None = None,
+) -> AuthBundle:
+    """Async wrapper for compute_message_auth with retry on errors."""
+    return compute_message_auth(
+        session_key=session_key,
+        device_id=device_id,
+        request_id=request_id,
+        blaze_id=blaze_id,
+        additional_data=additional_data,
+        message_expiration=message_expiration,
+        sequence=sequence,
+        experimental=experimental,
+        nonce_override=nonce_override,
+    )
+
+
+@retry_on_error(max_retries=3, base_backoff=2.0)
+async def delta_refresh_async(
+    existing_bundle: AuthBundle,
+    *,
+    request_id: int,
+    blaze_id: int,
+    additional_data: str | None = None,
+    message_expiration: datetime | None = None,
+    nonce_override: bytes | None = None,
+) -> AuthBundle:
+    """Async wrapper for delta_refresh with retry on errors."""
+    return delta_refresh(
+        existing_bundle=existing_bundle,
+        request_id=request_id,
+        blaze_id=blaze_id,
+        additional_data=additional_data,
+        message_expiration=message_expiration,
+        nonce_override=nonce_override,
+    )
+
+
 def decode_auth_data(auth_data_b64: str) -> Tuple[str, str]:
     """Decode a base64 ``authData`` blob returning (nonce_hex, inner_json_str).
 
@@ -174,4 +287,4 @@ def decode_auth_data(auth_data_b64: str) -> Tuple[str, str]:
     return nonce.hex(), payload_str
 
 
-__all__ = ["AuthBundle", "compute_message_auth", "decode_auth_data", "DEFAULT_AUTH_TYPE"]
+__all__ = ["AuthBundle", "compute_message_auth", "decode_auth_data", "DEFAULT_AUTH_TYPE", "delta_refresh", "compute_message_auth_async", "delta_refresh_async"]

@@ -31,6 +31,7 @@ from typing import Any, Dict, Optional, Tuple
 from mitmproxy import io as mitmio
 from mitmproxy.http import HTTPFlow
 
+from companion_collect.config import get_settings
 from companion_collect.logging import get_logger
 
 logger = get_logger(__name__)
@@ -355,6 +356,8 @@ def refresh_once(flow_path: Path, output_path: Path, tokens_output: Path) -> boo
 
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
+    settings = get_settings()
+
     parser = argparse.ArgumentParser(
         description="Auto-refresh session ticket from mitmproxy captures",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -389,8 +392,11 @@ Workflow:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path.cwd() / "research" / "captures" / "current_session_context.json",
-        help="Output path for session context (default: research/captures/current_session_context.json)",
+        default=Path(settings.session_context_path),
+        help=(
+            "Output path for session context (default: value from settings.session_context_path, "
+            f"currently {Path(settings.session_context_path)})"
+        ),
     )
     
     parser.add_argument(
@@ -402,8 +408,11 @@ Workflow:
     parser.add_argument(
         "--tokens-output",
         type=Path,
-        default=Path.cwd() / "tokens.json",
-        help="Output path for OAuth tokens (default: tokens.json)",
+        default=Path(settings.tokens_path),
+        help=(
+            "Output path for OAuth tokens (default: value from settings.tokens_path, "
+            f"currently {Path(settings.tokens_path)})"
+        ),
     )
     
     parser.add_argument(

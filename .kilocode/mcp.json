@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "brave-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "BSALlVQi7qGj9YCnfKyP66MKmv38zZe"
+      }
+    },
+    "redis": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/redis",
+        "--url",
+        "redis://localhost:6379"
+      ]
+    }
+  }
+}

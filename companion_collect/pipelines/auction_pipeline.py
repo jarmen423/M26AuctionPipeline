@@ -6,6 +6,8 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, Sequence, Optional
 
+from ea_constants import AuctionDetail, AuctionSearchResponse
+
 from companion_collect.collectors.auctions import AuctionCollector
 from companion_collect.logging import get_logger
 
@@ -29,21 +31,38 @@ class AuctionRecord:
     raw: dict[str, Any]
 
 
-def normalize_auction(raw: dict[str, Any]) -> AuctionRecord:
+def normalize_auction(raw: AuctionDetail) -> AuctionRecord:
     """Normalize Companion App auction responses into a stable schema."""
+    try:
+        trade_identifier = raw.get("tradeId") or raw.get("auctionId")
+        if trade_identifier is None:
+            raise KeyError("tradeId/auctionId")
 
-    item_data = raw.get("itemData", {})
-    return AuctionRecord(
-        trade_id=int(raw["tradeId"]),
-        buy_now_price=int(raw.get("buyNowPrice", 0)),
-        current_price=int(raw.get("currentBid", 0)),
-        starting_price=int(raw.get("startingBid", 0)),
-        expires=int(raw.get("expires", 0)),
-        seller_id=(int(raw["sellerId"]) if "sellerId" in raw else None),
-        platform=item_data.get("platform"),
-        item=item_data,
-        raw=raw,
-    )
+        buy_now_source = raw.get("buyNowPrice")
+        if buy_now_source is None:
+            buy_now_source = raw.get("buyoutPrice", 0)
+
+        current_price = raw.get("currentBid", raw.get("currentPrice", 0))
+        starting_price = raw.get("startingBid", raw.get("nextBid", current_price))
+        expires = raw.get("expires", raw.get("secondsRemaining", 0))
+
+        item_data = raw.get("itemData") or raw.get("card", {})
+        platform: str | None = None
+        if isinstance(item_data, dict):
+            platform = item_data.get("platform") or item_data.get("cardAssetType")
+        return AuctionRecord(
+            trade_id=int(trade_identifier),
+            buy_now_price=int(buy_now_source),
+            current_price=int(current_price),
+            starting_price=int(starting_price),
+            expires=int(expires),
+            seller_id=(int(raw["sellerId"]) if "sellerId" in raw else None),
+            platform=platform,
+            item=item_data if isinstance(item_data, dict) else {},
+            raw=raw,
+        )
+    except KeyError as e:
+        raise KeyError(f"Missing mandatory auction field: {e}")
 
 
 class AuctionPipeline:
@@ -55,7 +74,7 @@ class AuctionPipeline:
         collector: AuctionCollector,
         storage_sinks: Sequence["AuctionStorage"] | None = None,
         publish_sinks: Sequence["AuctionPublisher"] | None = None,
-        normalizer: Callable[[dict[str, Any]], AuctionRecord] = normalize_auction,
+    normalizer: Callable[[AuctionDetail], AuctionRecord] = normalize_auction,
     ) -> None:
         self.collector = collector
         self.storage_sinks = tuple(storage_sinks or ())
@@ -74,10 +93,14 @@ class AuctionPipeline:
         if tasks:
             await asyncio.gather(*tasks)
 
-    async def process_payload(self, payload: dict[str, Any]) -> None:
+    async def process_payload(self, payload: AuctionSearchResponse) -> None:
         """Process a raw payload from the collector."""
 
-        auction_info = payload.get("responseInfo", {}).get("value", {}).get("details", [])
+        auction_info = (
+            payload.get("responseInfo", {})
+            .get("value", {})
+            .get("details", [])
+        )
         normalized: list[AuctionRecord] = []
         for raw in auction_info:
             try:
@@ -118,7 +141,11 @@ class AuctionPipeline:
         async with self.collector.lifecycle():
             raw_payload = await self.collector.fetch_auctions(filters=filters)
 
-            auction_info = raw_payload.get("responseInfo", {}).get("value", {}).get("details", [])
+            auction_info = (
+                raw_payload.get("responseInfo", {})
+                .get("value", {})
+                .get("details", [])
+            )
             normalized: list[AuctionRecord] = []
             for raw in auction_info:
                 try:

@@ -7,11 +7,13 @@ import os
 import random
 from contextlib import asynccontextmanager
 from time import monotonic, time
-from typing import Any, AsyncIterator, Mapping
+from typing import Any, AsyncIterator, Mapping, cast
 
 import httpx
 import json
 from pathlib import Path
+
+from ea_constants import AuctionSearchResponse
 
 from companion_collect.adapters.request_template import RequestTemplate
 from companion_collect.auth.auth_pool_manager import AuthPoolManager
@@ -76,7 +78,11 @@ class AuctionCollector:
             finally:
                 self._logger.info("collector_stopped")
 
-    async def fetch_once(self, *, context: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    async def fetch_once(
+        self,
+        *,
+        context: Mapping[str, Any] | None = None,
+    ) -> AuctionSearchResponse:
         """Fetch auction data once using the configured request template."""
 
         if self._client is None or self._template is None:
@@ -102,6 +108,10 @@ class AuctionCollector:
         merged_context.setdefault("ip_address", "127.0.0.1")
         merged_context.setdefault("request_payload", "{\\\"filters\\\":[],\\\"itemName\\\":\\\"\\\"}")
         merged_context.setdefault("auth_type", 17_039_361)
+        merged_context.setdefault("user_agent", "MutDashboard-Collector/1.0")
+        merged_context.setdefault("ak_bmsc_cookie", "")
+        merged_context.setdefault("blaze_id", self.settings.m26_blaze_id)
+        merged_context.setdefault("device_id", self.settings.device_id or "dev")
         if self.settings.device_id:
             merged_context.setdefault("device_id", self.settings.device_id)
         merged_context.setdefault(
@@ -109,6 +119,20 @@ class AuctionCollector:
             int(time()) + self.settings.poll_interval_seconds * 10,
         )
 
+        # Load session context if not already present
+        if "session_ticket" not in merged_context:
+            session_context = self._load_session_context()
+            if session_context:
+                if "session_ticket" in session_context:
+                    merged_context["session_ticket"] = session_context["session_ticket"]
+                # Inject ak_bmsc cookie (or Cookie fallback) if provided by session context
+                cookie_val = session_context.get("ak_bmsc_cookie") or session_context.get("Cookie")
+                if cookie_val:
+                    merged_context["ak_bmsc_cookie"] = cookie_val
+                # Prefer user agent from session context if present
+                if "user_agent" in session_context:
+                    merged_context["user_agent"] = session_context["user_agent"]
+        
         # --- Auth pool rotation (replaces experimental compute_message_auth) ---
         if self._auth_pool:
             auth = self._auth_pool.get_next_auth()
@@ -175,32 +199,53 @@ class AuctionCollector:
             data=request_def.data,
         )
         response.raise_for_status()
-        response_data = response.json()
-        
+        response_data = cast(AuctionSearchResponse, response.json())
+
         # Check for EA API error responses (HTTP 200 but with error object)
         if "error" in response_data:
             error_info = response_data["error"]
             error_code = error_info.get("errorcode")
             error_name = error_info.get("errorname", "UNKNOWN_ERROR")
             error_msg = error_info.get("errortdf", {}).get("errorString", "No error message")
-            
+
             self._logger.error(
                 "api_error_response",
                 error_code=error_code,
                 error_name=error_name,
                 error_message=error_msg,
             )
-            
+
             # Raise a clear exception for error responses
             raise RuntimeError(
                 f"EA API Error {error_code} ({error_name}): {error_msg}. "
                 "This usually means auth codes are stale. Try refreshing the auth pool."
             )
-        
+
         self._logger.debug("fetch_success", status=response.status_code)
         return response_data
 
-    async def stream(self) -> AsyncIterator[dict[str, Any]]:
+    def _load_session_context(self) -> dict[str, Any] | None:
+        """Load session context from file."""
+        context_path = Path(self.settings.session_context_path)
+        print(f"DEBUG: Looking for session context at: {context_path}")
+        print(f"DEBUG: File exists: {context_path.exists()}")
+        print(f"DEBUG: Absolute path: {context_path.absolute()}")
+        
+        if not context_path.exists():
+            self._logger.warning("session_context_not_found", path=str(context_path))
+            return None
+        
+        try:
+            with open(context_path) as f:
+                data = json.load(f)
+            print(f"DEBUG: Loaded session context: {data}")
+            return data
+        except Exception as e:
+            self._logger.warning("session_context_load_failed", error=str(e))
+            print(f"DEBUG: Failed to load session context: {e}")
+            return None
+
+    async def stream(self) -> AsyncIterator[AuctionSearchResponse]:
         """Continuously yield auction payloads until stopped."""
 
         poll_interval = max(1, self.settings.poll_interval_seconds)
@@ -227,7 +272,7 @@ class AuctionCollector:
             except asyncio.TimeoutError:
                 continue
 
-    async def fetch_auctions(self, filters: list | None = None) -> dict[str, Any]:
+    async def fetch_auctions(self, filters: list | None = None) -> AuctionSearchResponse:
         """Fetch M26 auctions with optional filters, handling auth refresh on expiry."""
         context_path = Path(self.settings.session_context_path)
         if not context_path.exists():

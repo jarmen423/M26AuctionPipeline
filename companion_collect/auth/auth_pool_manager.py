@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import structlog
+from companion_collect.config import get_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -152,7 +153,23 @@ class AuthPoolManager:
 
     @classmethod
     def from_default_path(cls) -> AuthPoolManager:
-        """Create manager from default pool path."""
-        # Use Path.cwd() to get project root (assumes running from project root)
+        """
+        Create manager from default pool path.
+
+        Respects settings.auth_pool_path when provided; falls back to legacy path.
+        """
+        try:
+            settings = get_settings()
+            candidate = getattr(settings, "auth_pool_path", None)
+        except Exception:
+            candidate = None
+
+        if candidate:
+            candidate_path = Path(candidate)
+            if not candidate_path.is_absolute():
+                candidate_path = Path.cwd() / candidate_path
+            return cls(candidate_path)
+
+        # Legacy default
         pool_path = Path.cwd() / "research" / "captures" / "auth_pool.json"
         return cls(pool_path)

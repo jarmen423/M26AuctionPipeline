@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
-from typing import List
+from functools import cached_property, lru_cache
+from typing import Any, List
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from companion_collect.madden import MaddenIdentifiers, get_identifiers
 
 
 class Settings(BaseSettings):
@@ -32,13 +35,19 @@ class Settings(BaseSettings):
     auth_password: str | None = None
     device_id: str | None = None
 
+    # Madden cycle configuration
+    madden_year: int = Field(default=2026, description="Four digit Madden cycle year")
+    madden_platform: str = Field(default="xbsx", description="Primary platform slug")
+
     # M26 Auction House settings
-    m26_blaze_id: str = "madden-2026-ps5"
+    m26_blaze_id: str | None = None
     m26_command_id: int = 9153
     m26_component_id: int = 2050
     m26_command_name: str = "Mobile_SearchAuctions"
+    m26_product_name: str | None = None
     tokens_path: str = "tokens.json"
     session_context_path: str = "auction_data/current_session_context.json"
+    auth_pool_path: str = "research/captures/auth_pool.json"
 
     # Storage
     redis_url: str = "redis://localhost:6379/0"
@@ -53,6 +62,17 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8080
     allowed_origins: List[str] = ["*"]
+
+    def model_post_init(self, __context: Any) -> None:
+        identifiers = get_identifiers(self.madden_year, self.madden_platform)
+        if self.m26_blaze_id is None:
+            self.m26_blaze_id = identifiers.blaze_header
+        if self.m26_product_name is None:
+            self.m26_product_name = identifiers.product_name
+
+    @cached_property
+    def madden_identifiers(self) -> MaddenIdentifiers:
+        return get_identifiers(self.madden_year, self.madden_platform)
 
 
 @lru_cache
