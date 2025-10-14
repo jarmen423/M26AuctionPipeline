@@ -49,6 +49,7 @@ from pathlib import Path
 
 from .token_manager import TokenManager
 from companion_collect.config import get_settings
+from ea_constants import ENTITLEMENT_TO_VALID_NAMESPACE, VALID_ENTITLEMENTS
 
 
 # WAL authentication endpoint for generating session tickets
@@ -112,6 +113,9 @@ class SessionManager:
         if self._primary_ticket is None or not self._primary_ticket.is_healthy:
             await self._promote_or_generate_primary()
         
+        if self._primary_ticket is None:
+            raise RuntimeError("Failed to acquire session ticket")
+
         return self._primary_ticket.ticket
     
     async def mark_failed(self, ticket: str) -> None:
@@ -196,19 +200,56 @@ class SessionManager:
         identifiers = settings.madden_identifiers
         blaze_header = settings.m26_blaze_id or identifiers.blaze_header
         product_name = settings.m26_product_name or identifiers.product_name
+        wal_blaze_header = settings.wal_blaze_id or blaze_header
+        wal_product_name = settings.wal_product_name or product_name
 
-        # Read numeric persona/blaze ID from session context (auction_data/current_session_context.json)
+        # Read numeric persona ID from session context (prefers persona_id key, falls back to blaze_id)
         persona_id: Optional[int] = None
+        session_cookie: Optional[str] = None
         try:
             ctx_path = Path(settings.session_context_path)
             if ctx_path.exists():
                 with ctx_path.open("r", encoding="utf-8") as f:
                     ctx = json.load(f)
-                raw_id = str(ctx.get("blaze_id", "")).strip()
-                if raw_id.isdigit():
-                    persona_id = int(raw_id)
+
+                platform_key = str(settings.madden_platform or "").lower()
+                expected_entitlement = VALID_ENTITLEMENTS.get(platform_key)
+                if expected_entitlement:
+                    ctx_entitlement = ctx.get("madden_entitlement")
+                    if ctx_entitlement and ctx_entitlement != expected_entitlement:
+                        raise RuntimeError(
+                            "Session context Madden entitlement does not match configured platform. "
+                            f"Expected '{expected_entitlement}', found '{ctx_entitlement}'."
+                        )
+                    expected_namespace = ENTITLEMENT_TO_VALID_NAMESPACE.get(expected_entitlement)
+                    ctx_namespace = ctx.get("persona_namespace")
+                    if expected_namespace and ctx_namespace and ctx_namespace != expected_namespace:
+                        selection_reason = ctx.get("persona_selection_reason") or "unspecified"
+                        print(
+                            "Warning: session context persona namespace does not match Madden entitlement namespace. "
+                            f"Expected '{expected_namespace}', found '{ctx_namespace}'. "
+                            f"Continuing with stored persona (reason: {selection_reason})."
+                        )
+
+                cookie_val = ctx.get("Cookie") or ctx.get("ak_bmsc_cookie")
+                if isinstance(cookie_val, str) and cookie_val.strip():
+                    session_cookie = cookie_val.strip()
+
+                for key in ("persona_id", "personaId", "blaze_persona_id"):
+                    raw_val = ctx.get(key)
+                    if raw_val is None:
+                        continue
+                    raw_str = str(raw_val).strip()
+                    if raw_str.isdigit():
+                        persona_id = int(raw_str)
+                        break
+
+                if persona_id is None:
+                    raw_blaze = str(ctx.get("blaze_id", "")).strip()
+                    if raw_blaze.isdigit():
+                        persona_id = int(raw_blaze)
         except Exception as e:
-            print(f"Warning: failed reading session context persona/blaze id: {e}")
+            print(f"Warning: failed reading session context persona id: {e}")
 
         # Prepare WAL login URL and payload; keep X-BLAZE-ID header as product channel string
         login_url = WAL_LOGIN_ENDPOINT
@@ -217,11 +258,17 @@ class SessionManager:
             login_url = f"{login_url}{sep}personaId={persona_id}"
 
         # Log both identifiers just before calling WAL
-        print(f"WAL login using X-BLAZE-ID header: {blaze_header}, numeric persona/blaze ID: {persona_id}")
+        print(
+            "WAL login using X-BLAZE-ID header: {} (product: {}), numeric persona/blaze ID: {}".format(
+                wal_blaze_header,
+                wal_product_name,
+                persona_id,
+            )
+        )
 
         payload = {
             "accessToken": jwt_token,
-            "productName": product_name,
+            "productName": wal_product_name,
         }
         if persona_id is not None:
             payload["personaId"] = str(persona_id)
@@ -229,18 +276,24 @@ class SessionManager:
         # Call WAL login endpoint to generate session ticket
         async with httpx.AsyncClient(timeout=30.0) as client:
             try:
+                headers = {
+                    "Accept-Charset": "UTF-8",
+                    "Accept": "application/json",
+                    "X-BLAZE-ID": wal_blaze_header,
+                    "X-BLAZE-VOID-RESP": "XML",
+                    "X-Application-Key": "MADDEN-MCA",
+                    "Content-Type": "application/json",
+                    "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; Android SDK built for x86_64 Build/TE1A.220922.034)",
+                    "Accept-Encoding": "gzip, deflate, br, zstd",
+                    "Connection": "keep-alive",
+                }
+                if session_cookie:
+                    headers["Cookie"] = session_cookie
+
                 response = await client.post(
                     login_url,
                     json=payload,
-                    headers={
-                        "Accept-Charset": "UTF-8",
-                        "Accept": "application/json",
-                        "X-BLAZE-ID": blaze_header,  # keep product channel string here
-                        "X-BLAZE-VOID-RESP": "XML",
-                        "X-Application-Key": "MADDEN-MCA",
-                        "Content-Type": "application/json",
-                        "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; Android SDK built for x86_64 Build/TE1A.220922.034)",
-                    }
+                    headers=headers,
                 )
                 response.raise_for_status()
             except httpx.HTTPStatusError as e:

@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     m26_component_id: int = 2050
     m26_command_name: str = "Mobile_SearchAuctions"
     m26_product_name: str | None = None
+    wal_madden_year: int | None = None
+    wal_blaze_id: str | None = None
+    wal_product_name: str | None = None
     tokens_path: str = "tokens.json"
     session_context_path: str = "auction_data/current_session_context.json"
     auth_pool_path: str = "research/captures/auth_pool.json"
@@ -70,6 +73,12 @@ class Settings(BaseSettings):
             self.m26_blaze_id = identifiers.blaze_header
         if self.m26_product_name is None:
             self.m26_product_name = identifiers.product_name
+
+        wal_identifiers = get_identifiers(self.wal_madden_year or self.madden_year, self.madden_platform)
+        if self.wal_blaze_id is None:
+            self.wal_blaze_id = wal_identifiers.blaze_header
+        if self.wal_product_name is None:
+            self.wal_product_name = wal_identifiers.product_name
 
     @cached_property
     def madden_identifiers(self) -> MaddenIdentifiers:

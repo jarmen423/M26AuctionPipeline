@@ -131,6 +131,10 @@ class AuctionCollector:
             if session_context:
                 if "session_ticket" in session_context:
                     merged_context["session_ticket"] = session_context["session_ticket"]
+                if "persona_id" in session_context:
+                    merged_context["persona_id"] = session_context["persona_id"]
+                if "personaId" in session_context:
+                    merged_context["persona_id"] = session_context["personaId"]
                 # Inject ak_bmsc cookie (or Cookie fallback) if provided by session context
                 cookie_val = session_context.get("ak_bmsc_cookie") or session_context.get("Cookie")
                 if cookie_val:
@@ -297,20 +301,16 @@ class AuctionCollector:
 
                     if self._auth_pool:
                         refreshed = self._auth_pool.get_next_auth()
-                        auth_code = refreshed.auth_code
-                        auth_data = refreshed.auth_data
-                        auth_type = refreshed.auth_type
+                        context["auth_code"] = refreshed.auth_code
+                        context["auth_data"] = refreshed.auth_data
+                        context["auth_type"] = refreshed.auth_type
                     else:
                         refreshed_bundle = self._generate_auth_bundle(context)
-                        auth_code = refreshed_bundle.auth_code
-                        auth_data = refreshed_bundle.auth_data
-                        auth_type = refreshed_bundle.auth_type
+                        context["auth_code"] = refreshed_bundle.auth_code
+                        context["auth_data"] = refreshed_bundle.auth_data
+                        context["auth_type"] = refreshed_bundle.auth_type
 
-                    session_ticket = await session_manager.create_session_ticket(
-                        auth_code=auth_code,
-                        auth_data=auth_data,
-                        auth_type=auth_type,
-                    )
+                    session_ticket = await session_manager.create_session_ticket()
 
                     session_context["session_ticket"] = session_ticket
                     context["session_ticket"] = session_ticket
