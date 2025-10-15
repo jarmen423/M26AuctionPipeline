@@ -10,6 +10,7 @@ from companion_collect.adapters.request_template import RequestTemplate
 from companion_collect.auth import session_manager as session_manager_module
 from companion_collect.auth import token_manager as token_manager_module
 from companion_collect.auth.auth_pool_manager import AuthPoolManager
+from companion_collect.collectors import auctions as auctions_module
 from companion_collect.collectors.auctions import AuctionCollector
 
 
@@ -28,8 +29,24 @@ def fake_token_and_session(monkeypatch):
         def __init__(self, token_manager):
             self.token_manager = token_manager
 
-        async def create_session_ticket(self, **_kwargs):
+        async def get_session_ticket(self) -> str:
             return "session-token"
+
+        async def create_session_ticket(
+            self,
+            *,
+            auth_code: str | None = None,
+            auth_data: str | None = None,
+            auth_type: int | None = None,
+            promote_primary: bool = True,
+        ) -> str:
+            return "session-token"
+
+        async def mark_failed(self, ticket: str) -> None:
+            return None
+
+        async def ensure_backups(self) -> None:
+            return None
 
     monkeypatch.setattr(
         token_manager_module.TokenManager,
@@ -114,6 +131,9 @@ async def test_auth_pool_integration(auth_pool, mock_template, mock_client):
         # First fetch
         await collector.fetch_once()
         after_first = auth_pool._index
+        first_context = mock_template.render.call_args.kwargs["context"]
+        assert first_context["blaze_id"] == collector.settings.m26_blaze_id
+        assert first_context["user_agent"] == auctions_module._DEFAULT_COMPANION_USER_AGENT
 
         # Verify rotation happened
         assert after_first == (initial_index + 1) % 5
@@ -121,6 +141,9 @@ async def test_auth_pool_integration(auth_pool, mock_template, mock_client):
         # Second fetch
         await collector.fetch_once()
         after_second = auth_pool._index
+        second_context = mock_template.render.call_args.kwargs["context"]
+        assert second_context["blaze_id"] == collector.settings.m26_blaze_id
+        assert second_context["user_agent"] == auctions_module._DEFAULT_COMPANION_USER_AGENT
 
         # Verify continued rotation
         assert after_second == (after_first + 1) % 5
@@ -157,6 +180,7 @@ async def test_auth_pool_auto_loads(mock_template, mock_client, tmp_path, monkey
     assert collector._auth_pool is None
 
     # Enter lifecycle - should auto-load
+    collector.settings.use_auth_pool = True
     async with collector.lifecycle():
         # Auth pool should be loaded
         assert collector._auth_pool is not None
@@ -165,6 +189,9 @@ async def test_auth_pool_auto_loads(mock_template, mock_client, tmp_path, monkey
         # Test fetch works
         await collector.fetch_once()
         # If no error, auto-load worked!
+        enforced_context = mock_template.render.call_args.kwargs["context"]
+        assert enforced_context["blaze_id"] == collector.settings.m26_blaze_id
+        assert enforced_context["user_agent"] == auctions_module._DEFAULT_COMPANION_USER_AGENT
 
 
 @pytest.mark.asyncio
@@ -186,6 +213,18 @@ async def test_auth_pool_rotation_multiple_fetches(auth_pool, mock_template, moc
         # Verify rotation pattern: 0,1,2,3,4,0,1,2,3,4
         expected = [0, 1, 2, 3, 4, 0, 1, 2, 3, 4]
         assert indices == expected
+
+
+@pytest.mark.asyncio
+async def test_fetch_once_overrides_incoming_context(mock_template, mock_client):
+    collector = AuctionCollector(request_template=mock_template, client=mock_client)
+
+    async with collector.lifecycle():
+        await collector.fetch_once(context={"blaze_id": "madden-2025-xbsx-gen5", "user_agent": "bad-agent"})
+
+    render_context = mock_template.render.call_args.kwargs["context"]
+    assert render_context["blaze_id"] == collector.settings.m26_blaze_id
+    assert render_context["user_agent"] == auctions_module._DEFAULT_COMPANION_USER_AGENT
 
 
 def test_auth_pool_passed_to_collector(auth_pool):

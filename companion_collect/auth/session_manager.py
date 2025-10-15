@@ -44,7 +44,7 @@ import httpx
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Any
 from pathlib import Path
 
 from .token_manager import TokenManager
@@ -80,7 +80,7 @@ class SessionManager:
     """Manages session ticket pool with automatic generation and failover."""
     
     def __init__(
-        self, 
+        self,
         token_manager: TokenManager,
         max_backups: int = MAX_BACKUP_TICKETS
     ):
@@ -92,7 +92,6 @@ class SessionManager:
         """
         self.token_manager = token_manager
         self.max_backups = max_backups
-        
         self._primary_ticket: Optional[SessionTicket] = None
         self._backup_tickets: list[SessionTicket] = []
         self._generation_lock = asyncio.Lock()
@@ -192,14 +191,23 @@ class SessionManager:
         Raises:
             httpx.HTTPError: If generation fails
         """
+        from companion_collect.madden import get_identifiers
         # Get valid JWT from token manager
         jwt_token = await self.token_manager.get_valid_jwt()
 
         # Load settings for dynamic product channel header and product name
         settings = get_settings()
-        identifiers = settings.madden_identifiers
-        blaze_header = settings.m26_blaze_id or identifiers.blaze_header
-        product_name = settings.m26_product_name or identifiers.product_name
+
+        # Determine which year to use for WAL (allow override)
+        madden_year = settings.wal_madden_year or settings.madden_year
+
+        identifiers = get_identifiers(madden_year, settings.madden_platform)
+        blaze_header = identifiers.blaze_header
+        product_name = identifiers.product_name
+
+        # If were overriding from entitlement-derived year, log that shit
+        if settings.wal_madden_year and settings.wal_madden_year != settings.madden_year:
+            print(f"WAL year override active: using {settings.wal_madden_year} instead of {settings.madden_year}")
         wal_blaze_header = settings.wal_blaze_id or blaze_header
         wal_product_name = settings.wal_product_name or product_name
 
@@ -253,9 +261,6 @@ class SessionManager:
 
         # Prepare WAL login URL and payload; keep X-BLAZE-ID header as product channel string
         login_url = WAL_LOGIN_ENDPOINT
-        if persona_id is not None:
-            sep = "&" if "?" in login_url else "?"
-            login_url = f"{login_url}{sep}personaId={persona_id}"
 
         # Log both identifiers just before calling WAL
         print(
@@ -266,15 +271,25 @@ class SessionManager:
             )
         )
 
-        payload = {
+        payload: dict[str, Any] = {
             "accessToken": jwt_token,
             "productName": wal_product_name,
         }
-        if persona_id is not None:
-            payload["personaId"] = str(persona_id)
+        import ssl
+        import httpx
+        ssl_context = ssl.create_default_context()
+        # Match snallabot's permissive TLS configuartion
+        # allow legacy renegotiation (like undici's SSL_OP_LEGACY_SERVER_CONNECT)
+        ssl_context.options |= getattr(ssl, "OP_LEGACY_SERVER_CONNECT", 0x4)
 
+        # Mirror rejectUnauthorized: false        
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        # Python doesn't have SSL_OP_LEGACY_SERVER_CONNECT equivalent,
+        # but disabling verification should be enough
+    
         # Call WAL login endpoint to generate session ticket
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, verify=ssl_context) as client:
             try:
                 headers = {
                     "Accept-Charset": "UTF-8",
@@ -295,6 +310,24 @@ class SessionManager:
                     json=payload,
                     headers=headers,
                 )
+                print("WAL login request sent:")
+                print("URL:", response.request.url)
+                print("Headers:", dict(response.request.headers))
+                print("Payload:", payload)
+                try:
+                    Path("auction_data").mkdir(parents=True, exist_ok=True)
+                    with Path("auction_data/wal_login_request.json").open("w", encoding="utf-8") as f:
+                        json.dump(
+                            {
+                                "url": str(response.request.url),
+                                "headers": dict(response.request.headers),
+                                "payload": payload,
+                            },
+                            f,
+                            indent=2,
+                        )
+                except Exception:
+                    pass
                 response.raise_for_status()
             except httpx.HTTPStatusError as e:
                 # Print request/response details for diagnosis (e.g., 404)
@@ -325,6 +358,17 @@ class SessionManager:
         
         # Check for userLoginInfo
         if "userLoginInfo" not in data:
+            print("WAL login returned error payload:")
+            try:
+                print(json.dumps(data, indent=2))
+            except Exception:
+                print(str(data))
+            try:
+                Path("auction_data").mkdir(parents=True, exist_ok=True)
+                with Path("auction_data/wal_login_response.json").open("w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+            except Exception:
+                pass
             raise RuntimeError(f"Session generation failed. Response: {json.dumps(data, indent=2)[:500]}")
         
         # Extract session ticket info
@@ -332,6 +376,15 @@ class SessionManager:
         
         # Update last generation time for rate limiting
         self._last_generation_time = datetime.now(timezone.utc)
+
+        session_key_preview = user_login_info["sessionKey"][:6]
+        print(
+            "WAL login succeeded: blazeHeader={}, sessionKeyPrefix={}..., blazeId={}".format(
+                wal_blaze_header,
+                session_key_preview,
+                user_login_info["blazeId"],
+            )
+        )
         
         return SessionTicket(
             ticket=user_login_info["sessionKey"],

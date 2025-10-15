@@ -23,6 +23,10 @@ from companion_collect.auth.token_manager import TokenManager
 from companion_collect.config import Settings, get_settings
 from companion_collect.logging import get_logger
 
+_DEFAULT_COMPANION_USER_AGENT = (
+    "Dalvik/2.1.0 (Linux; U; Android 13; sdk_gphone_x86_64 Build/TE1A.220922.031)"
+)
+
 
 class AuctionCollector:
     """Poll the Companion App `Mobile_SearchAuctions` endpoint."""
@@ -114,7 +118,7 @@ class AuctionCollector:
         merged_context.setdefault("ip_address", "127.0.0.1")
         merged_context.setdefault("request_payload", "{\\\"filters\\\":[],\\\"itemName\\\":\\\"\\\"}")
         merged_context.setdefault("auth_type", 17_039_361)
-        merged_context.setdefault("user_agent", "MutDashboard-Collector/1.0")
+        merged_context.setdefault("user_agent", _DEFAULT_COMPANION_USER_AGENT)
         merged_context.setdefault("ak_bmsc_cookie", "")
         merged_context.setdefault("blaze_id", self.settings.m26_blaze_id)
         merged_context.setdefault("device_id", self.settings.device_id or "dev")
@@ -139,9 +143,7 @@ class AuctionCollector:
                 cookie_val = session_context.get("ak_bmsc_cookie") or session_context.get("Cookie")
                 if cookie_val:
                     merged_context["ak_bmsc_cookie"] = cookie_val
-                # Prefer user agent from session context if present
-                if "user_agent" in session_context:
-                    merged_context["user_agent"] = session_context["user_agent"]
+                # User agent intentionally not overridden from session context
         
         # --- Auth material ---
         if self._auth_pool:
@@ -160,7 +162,38 @@ class AuctionCollector:
             merged_context["auth_data"] = bundle.auth_data
             merged_context["auth_type"] = bundle.auth_type
 
+        enforced_blaze_id = self.settings.m26_blaze_id or ""
+        supplied_blaze = str(merged_context.get("blaze_id", ""))
+        expected_prefix = f"madden-{self.settings.madden_year}-"
+        if enforced_blaze_id:
+            if supplied_blaze and not supplied_blaze.startswith(expected_prefix):
+                self._logger.warning(
+                    "cycle_mismatch_corrected",
+                    was=supplied_blaze,
+                    now=enforced_blaze_id,
+                )
+            merged_context["blaze_id"] = enforced_blaze_id
+        else:  # pragma: no cover - settings guard
+            self._logger.warning("missing_m26_blaze_id")
+
+        merged_context["user_agent"] = _DEFAULT_COMPANION_USER_AGENT
+
         try:
+            try:
+                rendered_url = self._template.url.format(**merged_context)
+            except Exception:  # pragma: no cover - defensive logging guard
+                rendered_url = self._template.url
+
+            self._logger.info(
+                "about_to_render_request",
+                blaze_id=merged_context.get("blaze_id"),
+                product_name=merged_context.get("product_name"),
+                command_id=merged_context.get("command_id"),
+                command_name=merged_context.get("command_name"),
+                session_ticket=merged_context.get("session_ticket"),
+                url=rendered_url,
+            )
+
             request_def = self._template.render(context=merged_context)
         except KeyError as exc:
             missing = exc.args[0]
