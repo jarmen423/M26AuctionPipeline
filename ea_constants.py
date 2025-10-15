@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import Any, Dict, List, Literal, TypedDict
 
 
@@ -23,53 +22,6 @@ EA_LOGIN_URL = (
 # Madden version configuration
 TWO_DIGIT_YEAR = "25"
 YEAR = "2026"
-
-
-class SystemConsole(str, Enum):
-	XBOX_ONE = "xone"
-	PS4 = "ps4"
-	PC = "pc"
-	PS5 = "ps5"
-	XBOX_X = "xbsx"
-	STADIA = "stadia"
-
-
-def _valid_entitlements(two_digit_year: str) -> Dict[str, str]:
-	return {
-		"xone": f"MADDEN_{two_digit_year}XONE",
-		"ps4": f"MADDEN_{two_digit_year}PS4",
-		"pc": f"MADDEN_{two_digit_year}PC",
-		"ps5": f"MADDEN_{two_digit_year}PS5",
-		"xbsx": f"MADDEN_{two_digit_year}XBSX",
-		"stadia": f"MADDEN_{two_digit_year}SDA",
-	}
-
-
-VALID_ENTITLEMENTS = _valid_entitlements(TWO_DIGIT_YEAR)
-
-
-def _entitlement_to_system(two_digit_year: str) -> Dict[str, SystemConsole]:
-	mapping: Dict[str, SystemConsole] = {}
-	for console, entitlement in _valid_entitlements(two_digit_year).items():
-		mapping[entitlement] = SystemConsole(console)
-	return mapping
-
-
-ENTITLEMENT_TO_SYSTEM = _entitlement_to_system(TWO_DIGIT_YEAR)
-
-
-def _entitlement_to_namespace(two_digit_year: str) -> Dict[str, str]:
-	return {
-		f"MADDEN_{two_digit_year}XONE": "xbox",
-		f"MADDEN_{two_digit_year}PS4": "ps3",
-		f"MADDEN_{two_digit_year}PC": "cem_ea_id",
-		f"MADDEN_{two_digit_year}PS5": "ps3",
-		f"MADDEN_{two_digit_year}XBSX": "xbox",
-		f"MADDEN_{two_digit_year}SDA": "stadia",
-	}
-
-
-ENTITLEMENT_TO_VALID_NAMESPACE = _entitlement_to_namespace(TWO_DIGIT_YEAR)
 
 
 def _system_map(two_digit_year: str) -> Dict[str, str]:
@@ -399,10 +351,6 @@ __all__ = [
 	"EA_LOGIN_URL",
 	"TWO_DIGIT_YEAR",
 	"YEAR",
-	"SystemConsole",
-	"VALID_ENTITLEMENTS",
-	"ENTITLEMENT_TO_SYSTEM",
-	"ENTITLEMENT_TO_VALID_NAMESPACE",
 	"SYSTEM_MAP",
 	"NAMESPACES",
 	"BLAZE_SERVICE",

@@ -38,7 +38,7 @@ Usage:
 """
 
 from __future__ import annotations
-
+import ssl
 import asyncio
 import httpx
 import json
@@ -49,8 +49,7 @@ from pathlib import Path
 
 from .token_manager import TokenManager
 from companion_collect.config import get_settings
-from ea_constants import ENTITLEMENT_TO_VALID_NAMESPACE, VALID_ENTITLEMENTS
-
+from companion_collect.logging import get_logger
 
 # WAL authentication endpoint for generating session tickets
 WAL_LOGIN_ENDPOINT = "https://wal2.tools.gos.bio-iad.ea.com/wal/authentication/login"
@@ -96,6 +95,7 @@ class SessionManager:
         self._backup_tickets: list[SessionTicket] = []
         self._generation_lock = asyncio.Lock()
         self._last_generation_time: Optional[datetime] = None
+        self._logger = get_logger(__name__).bind(component="session_manager")
     
     async def get_session_ticket(self) -> str:
         """Get current active session ticket.
@@ -122,10 +122,13 @@ class SessionManager:
         # Find and mark the failed ticket
         if self._primary_ticket and self._primary_ticket.ticket == ticket:
             self._primary_ticket.failed_count += 1
-            print("Primary ticket failed (count: {})".format(self._primary_ticket.failed_count))
+            self._logger.warning(
+                "primary_ticket_failed",
+                failed_count=self._primary_ticket.failed_count,
+            )
             
             if not self._primary_ticket.is_healthy:
-                print("Primary ticket unhealthy, promoting backup...")
+                self._logger.warning("primary_ticket_unhealthy")
                 await self._promote_or_generate_primary()
         
         # Also check backups
@@ -134,7 +137,7 @@ class SessionManager:
             if backup.ticket == ticket:
                 backup.failed_count += 1
                 if not backup.is_healthy:
-                    print("Removing unhealthy backup ticket")
+                    self._logger.warning("backup_removed", reason="unhealthy")
                     self._backup_tickets.remove(backup)
                 break
     
@@ -145,7 +148,7 @@ class SessionManager:
         if needed <= 0:
             return
         
-        print("Generating {} backup session ticket(s)...".format(needed))
+        self._logger.info("ensure_backups_start", count=needed)
         
         for i in range(needed):
             try:
@@ -154,11 +157,18 @@ class SessionManager:
                 
                 ticket_data = await self._generate_ticket()
                 self._backup_tickets.append(ticket_data)
-                
-                print("   Backup {}/{} generated: {}...".format(i+1, needed, ticket_data.ticket[:50]))
+                self._logger.info(
+                    "backup_generated",
+                    index=i + 1,
+                    total=needed,
+                )
                 
             except Exception as e:
-                print("   Failed to generate backup {}: {}".format(i+1, e))
+                self._logger.warning(
+                    "backup_generation_failed",
+                    index=i + 1,
+                    error=str(e),
+                )
                 break  # Stop trying if we hit errors
     
     async def _promote_or_generate_primary(self) -> None:
@@ -169,27 +179,21 @@ class SessionManager:
                 backup = self._backup_tickets.pop(0)
                 if backup.is_healthy:
                     self._primary_ticket = backup
-                    print("Promoted backup to primary: {}...".format(backup.ticket[:50]))
+                    self._logger.info("promoted_backup_to_primary")
                     return
             
             # No healthy backups, generate new primary
-            print("No healthy backups, generating new primary ticket...")
+            self._logger.info("generating_new_primary")
             await self._wait_for_generation_cooldown()
             
             try:
                 self._primary_ticket = await self._generate_ticket()
-                print("New primary ticket generated: {}...".format(self._primary_ticket.ticket[:50]))
+                self._logger.info("primary_ticket_generated")
             except Exception as e:
                 raise RuntimeError("Failed to generate primary session ticket: {}".format(e))
     
     async def _generate_ticket(self) -> SessionTicket:
         """Generate a fresh session ticket from JWT.
-        
-        Returns:
-            SessionTicket data
-            
-        Raises:
-            httpx.HTTPError: If generation fails
         """
         from companion_collect.madden import get_identifiers
         # Get valid JWT from token manager
@@ -201,195 +205,128 @@ class SessionManager:
         # Determine which year to use for WAL (allow override)
         madden_year = settings.wal_madden_year or settings.madden_year
 
+        # Get WAL identifiers (skip intermediate varialbes)
         identifiers = get_identifiers(madden_year, settings.madden_platform)
-        blaze_header = identifiers.blaze_header
-        product_name = identifiers.product_name
+        wal_blaze_header = settings.wal_blaze_id or identifiers.blaze_header
+        wal_product_name = settings.wal_product_name or identifiers.product_name
 
         # If were overriding from entitlement-derived year, log that shit
         if settings.wal_madden_year and settings.wal_madden_year != settings.madden_year:
-            print(f"WAL year override active: using {settings.wal_madden_year} instead of {settings.madden_year}")
-        wal_blaze_header = settings.wal_blaze_id or blaze_header
-        wal_product_name = settings.wal_product_name or product_name
+            self._logger.info(
+                "wal_year_override",
+                wal_year=settings.wal_madden_year,
+                default_year=settings.madden_year,
+            )
 
-        # Read numeric persona ID from session context (prefers persona_id key, falls back to blaze_id)
-        persona_id: Optional[int] = None
+        # Read optional cookie from session context (skip entitlement validation)
         session_cookie: Optional[str] = None
         try:
             ctx_path = Path(settings.session_context_path)
             if ctx_path.exists():
                 with ctx_path.open("r", encoding="utf-8") as f:
                     ctx = json.load(f)
-
-                platform_key = str(settings.madden_platform or "").lower()
-                expected_entitlement = VALID_ENTITLEMENTS.get(platform_key)
-                if expected_entitlement:
-                    ctx_entitlement = ctx.get("madden_entitlement")
-                    if ctx_entitlement and ctx_entitlement != expected_entitlement:
-                        raise RuntimeError(
-                            "Session context Madden entitlement does not match configured platform. "
-                            f"Expected '{expected_entitlement}', found '{ctx_entitlement}'."
-                        )
-                    expected_namespace = ENTITLEMENT_TO_VALID_NAMESPACE.get(expected_entitlement)
-                    ctx_namespace = ctx.get("persona_namespace")
-                    if expected_namespace and ctx_namespace and ctx_namespace != expected_namespace:
-                        selection_reason = ctx.get("persona_selection_reason") or "unspecified"
-                        print(
-                            "Warning: session context persona namespace does not match Madden entitlement namespace. "
-                            f"Expected '{expected_namespace}', found '{ctx_namespace}'. "
-                            f"Continuing with stored persona (reason: {selection_reason})."
-                        )
-
                 cookie_val = ctx.get("Cookie") or ctx.get("ak_bmsc_cookie")
                 if isinstance(cookie_val, str) and cookie_val.strip():
                     session_cookie = cookie_val.strip()
-
-                for key in ("persona_id", "personaId", "blaze_persona_id"):
-                    raw_val = ctx.get(key)
-                    if raw_val is None:
-                        continue
-                    raw_str = str(raw_val).strip()
-                    if raw_str.isdigit():
-                        persona_id = int(raw_str)
-                        break
-
-                if persona_id is None:
-                    raw_blaze = str(ctx.get("blaze_id", "")).strip()
-                    if raw_blaze.isdigit():
-                        persona_id = int(raw_blaze)
         except Exception as e:
-            print(f"Warning: failed reading session context persona id: {e}")
-
-        # Prepare WAL login URL and payload; keep X-BLAZE-ID header as product channel string
-        login_url = WAL_LOGIN_ENDPOINT
-
-        # Log both identifiers just before calling WAL
-        print(
-            "WAL login using X-BLAZE-ID header: {} (product: {}), numeric persona/blaze ID: {}".format(
-                wal_blaze_header,
-                wal_product_name,
-                persona_id,
-            )
-        )
-
+            self._logger.warning("session_cookie_read_failed", error=str(e))
+        
+        # Match snallabot's permissive TLS configuartion
+        ssl_context = ssl.create_default_context()
+        # allow legacy renegotiation (like undici's SSL_OP_LEGACY_SERVER_CONNECT)
+        ssl_context.options |= getattr(ssl, "OP_LEGACY_SERVER_CONNECT", 0x4)
+        # Mirror rejectUnauthorized:false
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        # Prepare WAL payload
         payload: dict[str, Any] = {
             "accessToken": jwt_token,
             "productName": wal_product_name,
         }
-        import ssl
-        import httpx
-        ssl_context = ssl.create_default_context()
-        # Match snallabot's permissive TLS configuartion
-        # allow legacy renegotiation (like undici's SSL_OP_LEGACY_SERVER_CONNECT)
-        ssl_context.options |= getattr(ssl, "OP_LEGACY_SERVER_CONNECT", 0x4)
-
-        # Mirror rejectUnauthorized: false        
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-        # Python doesn't have SSL_OP_LEGACY_SERVER_CONNECT equivalent,
-        # but disabling verification should be enough
-    
+        self._logger.info(
+            "wal_login_start",
+            blaze_id=wal_blaze_header,
+            product=wal_product_name,
+        )
         # Call WAL login endpoint to generate session ticket
         async with httpx.AsyncClient(timeout=30.0, verify=ssl_context) as client:
+            headers = {
+                "Accept-Charset": "UTF-8",
+                "Accept": "application/json",
+                "X-BLAZE-ID": wal_blaze_header,
+                "X-BLAZE-VOID-RESP": "XML",
+                "X-Application-Key": "MADDEN-MCA",
+                "Content-Type": "application/json",
+                "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; Android SDK built for x86_64 Build/TE1A.220922.034)",
+                "Accept-Encoding": "gzip, deflate, br, zstd",
+                "Connection": "keep-alive",
+            }
+            if session_cookie:
+                headers["Cookie"] = session_cookie
             try:
-                headers = {
-                    "Accept-Charset": "UTF-8",
-                    "Accept": "application/json",
-                    "X-BLAZE-ID": wal_blaze_header,
-                    "X-BLAZE-VOID-RESP": "XML",
-                    "X-Application-Key": "MADDEN-MCA",
-                    "Content-Type": "application/json",
-                    "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; Android SDK built for x86_64 Build/TE1A.220922.034)",
-                    "Accept-Encoding": "gzip, deflate, br, zstd",
-                    "Connection": "keep-alive",
-                }
-                if session_cookie:
-                    headers["Cookie"] = session_cookie
-
                 response = await client.post(
-                    login_url,
-                    json=payload,
+                    WAL_LOGIN_ENDPOINT,
                     headers=headers,
+                    json=payload
                 )
-                print("WAL login request sent:")
-                print("URL:", response.request.url)
-                print("Headers:", dict(response.request.headers))
-                print("Payload:", payload)
-                try:
-                    Path("auction_data").mkdir(parents=True, exist_ok=True)
-                    with Path("auction_data/wal_login_request.json").open("w", encoding="utf-8") as f:
-                        json.dump(
-                            {
-                                "url": str(response.request.url),
-                                "headers": dict(response.request.headers),
-                                "payload": payload,
-                            },
-                            f,
-                            indent=2,
-                        )
-                except Exception:
-                    pass
                 response.raise_for_status()
             except httpx.HTTPStatusError as e:
-                # Print request/response details for diagnosis (e.g., 404)
-                req = e.request
-                resp = e.response
-                try:
-                    print("WAL login request:", req.method, str(req.url))
-                    try:
-                        # Cast Headers to dict for printing; may include bytes/strings
-                        print("Request headers:", dict(req.headers))
-                    except Exception:
-                        pass
-                    try:
-                        print("Request body:", (req.content.decode("utf-8", "ignore") if req.content else "")[:2000])
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
-                try:
-                    print("WAL login response status:", resp.status_code if resp else "N/A")
-                    print("WAL login response body:", (resp.text if resp is not None else "")[:4000])
-                except Exception:
-                    pass
-                # Re-raise to preserve original behavior
+                self._logger.error(
+                    "wal_login_failed",
+                    status=e.response.status_code,
+                    response=e.response.text[:1000],
+                )
                 raise
-
             data = response.json()
-        
-        # Check for userLoginInfo
-        if "userLoginInfo" not in data:
-            print("WAL login returned error payload:")
-            try:
-                print(json.dumps(data, indent=2))
-            except Exception:
-                print(str(data))
-            try:
-                Path("auction_data").mkdir(parents=True, exist_ok=True)
-                with Path("auction_data/wal_login_response.json").open("w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2)
-            except Exception:
-                pass
-            raise RuntimeError(f"Session generation failed. Response: {json.dumps(data, indent=2)[:500]}")
-        
-        # Extract session ticket info
-        user_login_info = data["userLoginInfo"]
-        
-        # Update last generation time for rate limiting
-        self._last_generation_time = datetime.now(timezone.utc)
 
-        session_key_preview = user_login_info["sessionKey"][:6]
-        print(
-            "WAL login succeeded: blazeHeader={}, sessionKeyPrefix={}..., blazeId={}".format(
-                wal_blaze_header,
-                session_key_preview,
-                user_login_info["blazeId"],
+            # Validate response structure
+            if "userLoginInfo" not in data:
+                snippet = json.dumps(data, indent=2)[:500]
+                self._logger.error("wal_login_missing_user_info", snippet=snippet)
+                raise RuntimeError(f"WAL login missing userLoginInfo: {snippet}")
+            user_login_info = data["userLoginInfo"]
+            self._last_generation_time = datetime.now(timezone.utc)
+            self._logger.info(
+                "wal_login_success",
+                blaze_id=user_login_info.get("blazeId"),
             )
-        )
+
+            context_path = Path(settings.session_context_path)
+            context_path.parent.mkdir(parents=True, exist_ok=True)
+
+            existing_context: dict[str, Any] = {}
+            if context_path.exists():
+                try:
+                    with context_path.open(encoding="utf-8") as handle:
+                        existing_context = json.load(handle)
+                except Exception as exc:  # pragma: no cover - best effort
+                    self._logger.warning(
+                        "session_context_preserve_failed",
+                        error=str(exc),
+                    )
+                    existing_context = {}
+
+            persona_details = user_login_info.get("personaDetails", {})
+            updated_context = dict(existing_context)
+            updated_context.update(
+                {
+                    "session_ticket": user_login_info["sessionKey"],
+                    "persona_id": str(user_login_info["blazeId"]),
+                    "personaId": str(user_login_info["blazeId"]),
+                    "persona_display_name": persona_details.get("displayName", ""),
+                }
+            )
+            if session_cookie:
+                updated_context.setdefault("ak_bmsc_cookie", session_cookie)
+
+            with context_path.open("w", encoding="utf-8") as handle:
+                json.dump(updated_context, handle, indent=2)
         
         return SessionTicket(
             ticket=user_login_info["sessionKey"],
             blaze_id=user_login_info["blazeId"],
-            display_name=user_login_info["personaDetails"]["displayName"],
+            display_name=user_login_info.get("personaDetails", {}).get("displayName", ""),
             generated_at=self._last_generation_time,
         )
     

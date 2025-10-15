@@ -1,5 +1,5 @@
 [project]
-name = "companion-collect"
+name = "M26AuctionPipeline"
 version = "0.1.0"
 description = "Companion App ingest service"
 authors = [{ name = "MutDashboard" }]

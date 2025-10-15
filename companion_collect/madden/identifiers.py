@@ -21,22 +21,6 @@ _HEADER_SUFFIX = {
     "ps4": "ps4-gen4",
 }
 
-# Entitlement suffixes used when validating licenses via EA's OAuth flows.
-_ENTITLEMENT_SUFFIX = {
-    "xbsx": "XBSX",
-    "xbox": "XBSX",
-    "xbox-series": "XBSX",
-    "ps5": "PS5",
-    "playstation": "PS5",
-    "playstation5": "PS5",
-    "pc": "PC",
-    "steam": "PC",
-    "origin": "PC",
-    "windows": "PC",
-    "xone": "XONE",
-    "ps4": "PS4",
-}
-
 _DEFAULT_PLATFORM = "xbsx"
 
 
@@ -66,12 +50,6 @@ class MaddenIdentifiers:
     @property
     def service_slug(self) -> str:
         return f"madden-{self.year}-{self.platform}"
-
-    @property
-    def entitlement_code(self) -> str:
-        suffix = _ENTITLEMENT_SUFFIX[self.platform]
-        year_suffix = str(self.year)[-2:]
-        return f"MADDEN_{year_suffix}{suffix}"
 
 
 def get_identifiers(year: int, platform: str | None = None) -> MaddenIdentifiers:

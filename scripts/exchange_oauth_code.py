@@ -10,12 +10,6 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 
 from companion_collect.config import get_settings
-from ea_constants import (
-    ENTITLEMENT_TO_SYSTEM,
-    ENTITLEMENT_TO_VALID_NAMESPACE,
-    VALID_ENTITLEMENTS,
-    SystemConsole,
-)
 
 
 CLIENT_ID = "MCA_25_COMP_APP"
@@ -78,54 +72,13 @@ async def fetch_pid(client: httpx.AsyncClient, access_token: str) -> str:
     return pid
 
 
-async def fetch_entitlements(
+async def fetch_personas(
     client: httpx.AsyncClient,
     *,
     pid: str,
     access_token: str,
-    status: Optional[str] = "ACTIVE",
 ) -> List[Dict[str, Any]]:
-    url = f"{IDENTITY_BASE_URL}/pids/{pid}/entitlements/"
-    params = {"status": status} if status else {}
-    try:
-        response = await client.get(
-            url,
-            params=params,
-            headers={
-                "Accept-Charset": "UTF-8",
-                "X-Include-Deviceid": "true",
-                "X-Expand-Results": "true",
-                "User-Agent": MOBILE_USER_AGENT,
-                "Accept-Encoding": "gzip",
-                "Authorization": f"Bearer {access_token}",
-            },
-        )
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        print(
-            "DEBUG: Entitlement fetch failed (status {}). Params {}. Response text: {}".format(
-                exc.response.status_code,
-                params or "<none>",
-                exc.response.text[:500],
-            )
-        )
-        return []
-
-    payload = response.json()
-    entitlements_container = payload.get("entitlements", {})
-    entitlement_list = entitlements_container.get("entitlement", [])
-    if not isinstance(entitlement_list, list):
-        return []
-    return entitlement_list
-
-
-async def fetch_personas(
-    client: httpx.AsyncClient,
-    *,
-    pid_uri: str,
-    access_token: str,
-) -> List[Dict[str, Any]]:
-    url = f"{IDENTITY_BASE_URL}{pid_uri}/personas"
+    url = f"{IDENTITY_BASE_URL}/pids/{pid}/personas"
     response = await client.get(
         url,
         params={"status": "ACTIVE", "access_token": access_token},
@@ -172,8 +125,6 @@ def update_session_context(
     *,
     context_path: Path,
     persona: Dict[str, Any],
-    entitlement: str,
-    system_console: SystemConsole | None,
     pid: str,
     selection_reason: str,
 ) -> None:
@@ -185,13 +136,19 @@ def update_session_context(
             except json.JSONDecodeError:
                 context = {}
 
+    for legacy_key in (
+        "madden_entitlement",
+        "system_console",
+        "blaze_id",
+        "user_agent",
+    ):
+        context.pop(legacy_key, None)
+
     context.update(
         {
             "persona_id": str(persona.get("personaId")),
             "persona_namespace": persona.get("namespaceName"),
             "persona_display_name": persona.get("displayName"),
-            "madden_entitlement": entitlement,
-            "system_console": system_console.value if system_console else None,
             "pid_id": pid,
             "persona_selection_reason": selection_reason,
         }
@@ -208,63 +165,22 @@ async def enrich_with_persona(
     access_token: str,
 ) -> None:
     settings = get_settings()
-    target_entitlement = VALID_ENTITLEMENTS.get(settings.madden_platform)
-    if not target_entitlement:
-        print(
-            f"WARNING: No entitlement mapping found for platform '{settings.madden_platform}'. Skipping persona lookup."
-        )
-        return
-
-    expected_namespace = ENTITLEMENT_TO_VALID_NAMESPACE.get(target_entitlement)
-    expected_system = ENTITLEMENT_TO_SYSTEM.get(target_entitlement)
-
     pid = await fetch_pid(client, access_token)
-    entitlements = await fetch_entitlements(
-        client, pid=pid, access_token=access_token, status="ACTIVE"
-    )
-    if not entitlements:
-        print(
-            f"DEBUG: No entitlements returned for PID {pid} (status=ACTIVE query). Retrying without status filter..."
-        )
-        entitlements = await fetch_entitlements(
-            client, pid=pid, access_token=access_token, status=None
-        )
-        if not entitlements:
-            print(f"DEBUG: Still no entitlements returned for PID {pid} (no status filter).")
-    matching_ents = [e for e in entitlements if e.get("groupName") == target_entitlement]
-    if not matching_ents:
-        if entitlements:
-            available_groups = sorted(
-                {str(e.get("groupName")) for e in entitlements if e.get("groupName")}
-            )
-            print("DEBUG: Entitlement groupNames returned (all statuses):")
-            for group in available_groups:
-                print(f"   - {group}")
-            sample = entitlements[:5]
-            print(f"DEBUG: Showing up to {len(sample)} raw entitlement records:")
-            for ent in sample:
-                print(
-                    "   - groupName={group} status={status} source={source} termination={termination}".format(
-                        group=ent.get("groupName"),
-                        status=ent.get("status"),
-                        source=ent.get("entitlementSource"),
-                        termination=ent.get("terminationDate"),
-                    )
-                )
-        print(
-            f"WARNING: No Madden entitlement '{target_entitlement}' found for PID {pid} (any status)."
-        )
-        return
+    namespace_preferences = {
+        "xbsx": "xbox",
+        "xone": "xbox",
+        "ps5": "ps3",
+        "ps4": "ps3",
+        "pc": "cem_ea_id",
+        "steam": "cem_ea_id",
+        "origin": "cem_ea_id",
+    }
+    platform = (settings.madden_platform or "").lower()
+    expected_namespace = namespace_preferences.get(platform)
 
-    personas: List[Dict[str, Any]] = []
-    for entitlement in matching_ents:
-        pid_uri = entitlement.get("pidUri")
-        if not pid_uri:
-            continue
-        personas.extend(await fetch_personas(client, pid_uri=pid_uri, access_token=access_token))
-
+    personas = await fetch_personas(client, pid=pid, access_token=access_token)
     if not personas:
-        print("WARNING: Madden entitlement located, but no personas returned by EA.")
+        print("WARNING: No personas returned by EA for the supplied account.")
         return
 
     persona, selection_reason = select_persona(personas, expected_namespace=expected_namespace)
@@ -276,8 +192,6 @@ async def enrich_with_persona(
     update_session_context(
         context_path=context_path,
         persona=persona,
-        entitlement=target_entitlement,
-        system_console=expected_system,
         pid=pid,
         selection_reason=selection_reason,
     )
@@ -286,10 +200,7 @@ async def enrich_with_persona(
     print(f"   Persona ID:        {persona.get('personaId')}")
     print(f"   Display Name:      {persona.get('displayName')}")
     print(f"   Namespace:         {persona.get('namespaceName')}")
-    print(f"   Madden Entitlement:{target_entitlement}")
     print(f"   Selection Reason:  {selection_reason}")
-    if expected_system:
-        print(f"   System Console:    {expected_system.value}")
 
 
 async def main() -> int:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import random
+from itertools import count
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from time import monotonic, time
@@ -46,8 +46,8 @@ class AuctionCollector:
         self._stopped = asyncio.Event()
         self._logger = get_logger(__name__).bind(component="auction_collector")
         self._page = 0
-        # Hybrid request id strategy: random 32-bit seed then increment each request.
-        self._request_counter = random.getrandbits(32)
+        # Request ids mirror snallabot behaviour: start at 1 and wrap at 32 bits.
+        self._request_counter = count(1)
         self.token_manager: TokenManager | None = None
         self.session_manager: SessionManager | None = None
 
@@ -111,9 +111,9 @@ class AuctionCollector:
         merged_context.setdefault("page_offset", self._page * page_size)
         merged_context.setdefault("api_version", "2")
         merged_context.setdefault("client_device", "3")
-        merged_context.setdefault("command_name", "Mobile_SearchAuctions")
-        merged_context.setdefault("component_id", 2050)
-        merged_context.setdefault("command_id", 9153)
+        merged_context.setdefault("command_name", self.settings.m26_command_name)
+        merged_context.setdefault("component_id", self.settings.m26_component_id)
+        merged_context.setdefault("command_id", self.settings.m26_command_id)
         merged_context.setdefault("component_name", "mut")
         merged_context.setdefault("ip_address", "127.0.0.1")
         merged_context.setdefault("request_payload", "{\\\"filters\\\":[],\\\"itemName\\\":\\\"\\\"}")
@@ -128,22 +128,24 @@ class AuctionCollector:
             "message_expiration_time",
             int(time()) + self.settings.poll_interval_seconds * 10,
         )
+        merged_context.setdefault("product_name", self.settings.m26_product_name)
 
         # Load session context if not already present
         if "session_ticket" not in merged_context:
             session_context = self._load_session_context()
             if session_context:
-                if "session_ticket" in session_context:
-                    merged_context["session_ticket"] = session_context["session_ticket"]
-                if "persona_id" in session_context:
-                    merged_context["persona_id"] = session_context["persona_id"]
-                if "personaId" in session_context:
-                    merged_context["persona_id"] = session_context["personaId"]
-                # Inject ak_bmsc cookie (or Cookie fallback) if provided by session context
+                session_ticket = session_context.get("session_ticket")
+                if session_ticket:
+                    merged_context["session_ticket"] = session_ticket
+                persona_id = session_context.get("persona_id") or session_context.get("personaId")
+                if persona_id:
+                    merged_context.setdefault("persona_id", persona_id)
                 cookie_val = session_context.get("ak_bmsc_cookie") or session_context.get("Cookie")
                 if cookie_val:
-                    merged_context["ak_bmsc_cookie"] = cookie_val
-                # User agent intentionally not overridden from session context
+                    merged_context.setdefault("ak_bmsc_cookie", cookie_val)
+                display_name = session_context.get("persona_display_name")
+                if display_name:
+                    merged_context.setdefault("persona_display_name", display_name)
         
         # --- Auth material ---
         if self._auth_pool:
@@ -237,24 +239,25 @@ class AuctionCollector:
 
     def _load_session_context(self) -> dict[str, Any] | None:
         """Load session context from file."""
+
         context_path = Path(self.settings.session_context_path)
-        print(f"DEBUG: Looking for session context at: {context_path}")
-        print(f"DEBUG: File exists: {context_path.exists()}")
-        print(f"DEBUG: Absolute path: {context_path.absolute()}")
-        
         if not context_path.exists():
             self._logger.warning("session_context_not_found", path=str(context_path))
             return None
-        
+
         try:
-            with open(context_path) as f:
-                data = json.load(f)
-            print(f"DEBUG: Loaded session context: {data}")
-            return data
-        except Exception as e:
-            self._logger.warning("session_context_load_failed", error=str(e))
-            print(f"DEBUG: Failed to load session context: {e}")
+            with context_path.open(encoding="utf-8") as handle:
+                data = json.load(handle)
+        except Exception as exc:  # pragma: no cover - diagnostic logging path
+            self._logger.warning(
+                "session_context_load_failed",
+                error=str(exc),
+                path=str(context_path),
+            )
             return None
+
+        self._logger.debug("session_context_loaded", keys=list(data.keys()))
+        return data
 
     async def stream(self) -> AsyncIterator[AuctionSearchResponse]:
         """Continuously yield auction payloads until stopped."""
@@ -379,8 +382,11 @@ class AuctionCollector:
         if isinstance(expiration_raw, (int, float)):
             message_expiration = datetime.fromtimestamp(expiration_raw, tz=timezone.utc)
 
-        request_id = self._request_counter & 0xFFFFFFFF
-        self._request_counter += 1
+        request_id = next(self._request_counter) & 0xFFFFFFFF
+
+        if persona_id is None:
+            self._logger.error("persona_id_missing")
+            raise RuntimeError("Persona id missing from session context; regenerate session ticket")
 
         device_id = str(context.get("device_id") or self.settings.device_id or "444d362e8e067fe2")
 
