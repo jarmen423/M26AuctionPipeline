@@ -127,7 +127,8 @@ def update_session_context(
     persona: Dict[str, Any],
     pid: str,
     selection_reason: str,
-) -> None:
+    session_ticket: Optional[str] = None,
+) -> Dict[str, Any]:
     context: Dict[str, Any] = {}
     if context_path.exists():
         with open(context_path, "r", encoding="utf-8") as fh:
@@ -136,33 +137,36 @@ def update_session_context(
             except json.JSONDecodeError:
                 context = {}
 
-    for legacy_key in (
-        "madden_entitlement",
-        "system_console",
-        "blaze_id",
-        "user_agent",
-    ):
-        context.pop(legacy_key, None)
+    preserved_fields: Dict[str, Any] = {}
+    if context.get("session_ticket"):
+        preserved_fields["session_ticket"] = context["session_ticket"]
+    if context.get("ak_bmsc_cookie"):
+        preserved_fields["ak_bmsc_cookie"] = context["ak_bmsc_cookie"]
 
-    context.update(
-        {
-            "persona_id": str(persona.get("personaId")),
-            "persona_namespace": persona.get("namespaceName"),
-            "persona_display_name": persona.get("displayName"),
-            "pid_id": pid,
-            "persona_selection_reason": selection_reason,
-        }
-    )
+    new_context: Dict[str, Any] = {**preserved_fields}
+    if session_ticket:
+        new_context["session_ticket"] = session_ticket
+    new_context["persona_id"] = str(persona.get("personaId")) if persona.get("personaId") else None
+    if persona.get("namespaceName"):
+        new_context["persona_namespace"] = persona["namespaceName"]
+    new_context["persona_display_name"] = persona.get("displayName")
+    new_context["pid_id"] = pid
+
+    # Drop any None values to keep the context minimal.
+    new_context = {k: v for k, v in new_context.items() if v is not None}
 
     context_path.parent.mkdir(parents=True, exist_ok=True)
     with open(context_path, "w", encoding="utf-8") as fh:
-        json.dump(context, fh, indent=2)
+        json.dump(new_context, fh, indent=2)
+
+    return new_context
 
 
 async def enrich_with_persona(
     client: httpx.AsyncClient,
     *,
     access_token: str,
+    session_ticket: Optional[str],
 ) -> None:
     settings = get_settings()
     pid = await fetch_pid(client, access_token)
@@ -189,18 +193,18 @@ async def enrich_with_persona(
         return
 
     context_path = Path(settings.session_context_path)
-    update_session_context(
+    new_context = update_session_context(
         context_path=context_path,
         persona=persona,
         pid=pid,
         selection_reason=selection_reason,
+        session_ticket=session_ticket,
     )
 
     print("Persona context updated:")
-    print(f"   Persona ID:        {persona.get('personaId')}")
-    print(f"   Display Name:      {persona.get('displayName')}")
-    print(f"   Namespace:         {persona.get('namespaceName')}")
-    print(f"   Selection Reason:  {selection_reason}")
+    print(json.dumps(new_context, indent=2))
+    if selection_reason:
+        print(f"Selection reason: {selection_reason}")
 
 
 async def main() -> int:
@@ -222,6 +226,12 @@ async def main() -> int:
         dest="code_verifier",
         default=None,
         help="PKCE code_verifier if the auth flow used PKCE",
+    )
+    parser.add_argument(
+        "--session-ticket",
+        dest="session_ticket",
+        default=None,
+        help="Optional session ticket to seed into current_session_context.json",
     )
     args = parser.parse_args()
 
@@ -262,7 +272,11 @@ async def main() -> int:
 
         access_token = tokens.get("access_token")
         if access_token:
-            await enrich_with_persona(client, access_token=access_token)
+            await enrich_with_persona(
+                client,
+                access_token=access_token,
+                session_ticket=args.session_ticket,
+            )
         else:
             print("WARNING: Token exchange response did not contain an access_token. Skipping persona lookup.")
 
