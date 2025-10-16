@@ -38,6 +38,7 @@ Usage:
 """
 
 from __future__ import annotations
+import os
 import ssl
 import asyncio
 import httpx
@@ -51,8 +52,9 @@ from .token_manager import TokenManager
 from companion_collect.config import get_settings
 from companion_collect.logging import get_logger
 
-# WAL authentication endpoint for generating session tickets
-WAL_LOGIN_ENDPOINT = "https://wal2.tools.gos.bio-iad.ea.com/wal/authentication/login"
+# WAL authentication endpoints
+DEFAULT_WAL_BASE_URL = "https://wal2.tools.gos.bio-iad.ea.com"
+WAL_LOGIN_PATH = "/wal/authentication/login"
 
 # Rate limiting configuration
 GENERATION_COOLDOWN_SECONDS = 10  # Wait between generations to respect rate limits
@@ -65,6 +67,7 @@ class SessionTicket:
     
     ticket: str
     blaze_id: int
+    persona_id: Optional[int]
     display_name: str
     generated_at: datetime
     failed_count: int = 0
@@ -81,7 +84,11 @@ class SessionManager:
     def __init__(
         self,
         token_manager: TokenManager,
-        max_backups: int = MAX_BACKUP_TICKETS
+        max_backups: int = MAX_BACKUP_TICKETS,
+        *,
+        product_override: Optional[str] = None,
+        blaze_id_override: Optional[str] = None,
+    wal_base_url_override: Optional[str] = None,
     ):
         """Initialize session manager.
         
@@ -96,26 +103,32 @@ class SessionManager:
         self._generation_lock = asyncio.Lock()
         self._last_generation_time: Optional[datetime] = None
         self._logger = get_logger(__name__).bind(component="session_manager")
-    
-    async def get_session_ticket(self) -> str:
-        """Get current active session ticket.
-        
-        Returns the primary ticket, generating one if needed. Since tickets
-        are reusable, this ticket can be used for multiple API calls.
-        
-        Returns:
-            Session ticket string for API calls
-            
-        Raises:
-            RuntimeError: If unable to generate any tickets
-        """
+        self._product_override = product_override
+        self._blaze_id_override = blaze_id_override
+        self._wal_base_url_override = wal_base_url_override
+
+    def _normalize_wal_endpoint(self, base_or_endpoint: Optional[str]) -> str:
+        base = (base_or_endpoint or DEFAULT_WAL_BASE_URL).strip()
+        if not base:
+            base = DEFAULT_WAL_BASE_URL
+        if base.rstrip("/").endswith(WAL_LOGIN_PATH.lstrip("/")) or "/wal/" in base:
+            return base.rstrip("/")
+        return f"{base.rstrip('/')}{WAL_LOGIN_PATH}"
+
+    async def ensure_primary_ticket(self) -> SessionTicket:
+        """Ensure the primary ticket exists and return it."""
         if self._primary_ticket is None or not self._primary_ticket.is_healthy:
             await self._promote_or_generate_primary()
-        
+
         if self._primary_ticket is None:
             raise RuntimeError("Failed to acquire session ticket")
 
-        return self._primary_ticket.ticket
+        return self._primary_ticket
+
+    async def get_session_ticket(self) -> str:
+        """Get current active session ticket string."""
+        ticket = await self.ensure_primary_ticket()
+        return ticket.ticket
     
     async def mark_failed(self, ticket: str) -> None:
         """Mark a session ticket as failed."""
@@ -195,20 +208,29 @@ class SessionManager:
     async def _generate_ticket(self) -> SessionTicket:
         """Generate a fresh session ticket from JWT.
         """
-        from companion_collect.madden import get_identifiers
         # Get valid JWT from token manager
         jwt_token = await self.token_manager.get_valid_jwt()
 
         # Load settings for dynamic product channel header and product name
         settings = get_settings()
 
-        # Determine which year to use for WAL (allow override)
+        # Determine which year to use for WAL (allow override) and resolve IDs
         madden_year = settings.wal_madden_year or settings.madden_year
+        wal_blaze_header, wal_product_name = settings.resolved_wal_identifiers
 
-        # Get WAL identifiers (skip intermediate varialbes)
-        identifiers = get_identifiers(madden_year, settings.madden_platform)
-        wal_blaze_header = settings.wal_blaze_id or identifiers.blaze_header
-        wal_product_name = settings.wal_product_name or identifiers.product_name
+        wal_product_env = os.getenv("WAL_PRODUCT")
+        wal_blaze_env = os.getenv("WAL_BLAZE_ID")
+        wal_base_env = os.getenv("WAL_BASE_URL")
+
+        if self._blaze_id_override:
+            wal_blaze_header = self._blaze_id_override
+        elif wal_blaze_env:
+            wal_blaze_header = wal_blaze_env
+
+        if self._product_override:
+            wal_product_name = self._product_override
+        elif wal_product_env:
+            wal_product_name = wal_product_env
 
         # If were overriding from entitlement-derived year, log that shit
         if settings.wal_madden_year and settings.wal_madden_year != settings.madden_year:
@@ -250,6 +272,8 @@ class SessionManager:
             product=wal_product_name,
         )
         # Call WAL login endpoint to generate session ticket
+        wal_endpoint = self._normalize_wal_endpoint(self._wal_base_url_override or wal_base_env or getattr(settings, "wal_base_url", None))
+
         async with httpx.AsyncClient(timeout=30.0, verify=ssl_context) as client:
             headers = {
                 "Accept-Charset": "UTF-8",
@@ -266,19 +290,22 @@ class SessionManager:
                 headers["Cookie"] = session_cookie
             try:
                 response = await client.post(
-                    WAL_LOGIN_ENDPOINT,
+                    wal_endpoint,
                     headers=headers,
-                    json=payload
+                    json=payload,
                 )
                 response.raise_for_status()
+                data = response.json()
             except httpx.HTTPStatusError as e:
+                status_code = e.response.status_code if e.response else None
+                response_text = e.response.text[:1000] if e.response else ""
                 self._logger.error(
                     "wal_login_failed",
-                    status=e.response.status_code,
-                    response=e.response.text[:1000],
+                    endpoint=wal_endpoint,
+                    status=status_code,
+                    response=response_text,
                 )
                 raise
-            data = response.json()
 
             # Validate response structure
             if "userLoginInfo" not in data:
@@ -286,6 +313,14 @@ class SessionManager:
                 self._logger.error("wal_login_missing_user_info", snippet=snippet)
                 raise RuntimeError(f"WAL login missing userLoginInfo: {snippet}")
             user_login_info = data["userLoginInfo"]
+            persona_details = user_login_info.get("personaDetails", {}) or {}
+            persona_id: Optional[int] = None
+            try:
+                persona_id_raw = persona_details.get("personaId")
+                if persona_id_raw is not None:
+                    persona_id = int(str(persona_id_raw))
+            except (TypeError, ValueError):
+                self._logger.warning("persona_id_parse_failed", value=persona_details.get("personaId"))
             self._last_generation_time = datetime.now(timezone.utc)
             self._logger.info(
                 "wal_login_success",
@@ -307,18 +342,15 @@ class SessionManager:
                     )
                     existing_context = {}
 
-            persona_details = user_login_info.get("personaDetails", {})
-            updated_context = dict(existing_context)
-            updated_context.update(
-                {
-                    "session_ticket": user_login_info["sessionKey"],
-                    "persona_id": str(user_login_info["blazeId"]),
-                    "personaId": str(user_login_info["blazeId"]),
-                    "persona_display_name": persona_details.get("displayName", ""),
-                }
-            )
+            updated_context = {
+                "session_ticket": user_login_info["sessionKey"],
+            }
             if session_cookie:
-                updated_context.setdefault("ak_bmsc_cookie", session_cookie)
+                updated_context["ak_bmsc_cookie"] = session_cookie
+
+            dropped_keys = [key for key in existing_context.keys() if key not in updated_context]
+            if dropped_keys:
+                self._logger.info("session_context_trimmed", dropped=dropped_keys)
 
             with context_path.open("w", encoding="utf-8") as handle:
                 json.dump(updated_context, handle, indent=2)
@@ -326,7 +358,8 @@ class SessionManager:
         return SessionTicket(
             ticket=user_login_info["sessionKey"],
             blaze_id=user_login_info["blazeId"],
-            display_name=user_login_info.get("personaDetails", {}).get("displayName", ""),
+            persona_id=persona_id,
+            display_name=persona_details.get("displayName", ""),
             generated_at=self._last_generation_time,
         )
     

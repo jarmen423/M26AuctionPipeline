@@ -146,14 +146,6 @@ def update_session_context(
     new_context: Dict[str, Any] = {**preserved_fields}
     if session_ticket:
         new_context["session_ticket"] = session_ticket
-    new_context["persona_id"] = str(persona.get("personaId")) if persona.get("personaId") else None
-    if persona.get("namespaceName"):
-        new_context["persona_namespace"] = persona["namespaceName"]
-    new_context["persona_display_name"] = persona.get("displayName")
-    new_context["pid_id"] = pid
-
-    # Drop any None values to keep the context minimal.
-    new_context = {k: v for k, v in new_context.items() if v is not None}
 
     context_path.parent.mkdir(parents=True, exist_ok=True)
     with open(context_path, "w", encoding="utf-8") as fh:
@@ -281,6 +273,8 @@ async def main() -> int:
             print("WARNING: Token exchange response did not contain an access_token. Skipping persona lookup.")
 
     print("Ready for session generation and pipeline run!")
+    print("\nFULL ACCESS TOKEN:\n")
+    print(tokens["access_token"])
     return 0
 
 

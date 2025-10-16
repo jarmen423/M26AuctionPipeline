@@ -23,6 +23,10 @@ from companion_collect.auth.token_manager import TokenManager
 from companion_collect.config import Settings, get_settings
 from companion_collect.logging import get_logger
 
+
+def _escape_request_payload(raw: str) -> str:
+    return raw.replace("\\", "\\\\").replace('"', '\\"')
+
 _DEFAULT_COMPANION_USER_AGENT = (
     "Dalvik/2.1.0 (Linux; U; Android 13; sdk_gphone_x86_64 Build/TE1A.220922.031)"
 )
@@ -130,6 +134,17 @@ class AuctionCollector:
         )
         merged_context.setdefault("product_name", self.settings.m26_product_name)
 
+        payload_dict = merged_context.pop("request_payload_dict", None)
+        if payload_dict is not None:
+            payload_json = json.dumps(payload_dict, separators=(",", ":"))
+            merged_context["request_payload"] = _escape_request_payload(payload_json)
+        else:
+            payload_source = merged_context.pop("request_payload_json", None)
+            if payload_source is not None:
+                if not isinstance(payload_source, str):
+                    payload_source = json.dumps(payload_source, separators=(",", ":"))
+                merged_context["request_payload"] = _escape_request_payload(payload_source)
+
         # Load session context if not already present
         if "session_ticket" not in merged_context:
             session_context = self._load_session_context()
@@ -137,15 +152,24 @@ class AuctionCollector:
                 session_ticket = session_context.get("session_ticket")
                 if session_ticket:
                     merged_context["session_ticket"] = session_ticket
-                persona_id = session_context.get("persona_id") or session_context.get("personaId")
-                if persona_id:
-                    merged_context.setdefault("persona_id", persona_id)
                 cookie_val = session_context.get("ak_bmsc_cookie") or session_context.get("Cookie")
                 if cookie_val:
                     merged_context.setdefault("ak_bmsc_cookie", cookie_val)
-                display_name = session_context.get("persona_display_name")
-                if display_name:
-                    merged_context.setdefault("persona_display_name", display_name)
+
+        active_ticket = None
+        if self.session_manager:
+            try:
+                active_ticket = await self.session_manager.ensure_primary_ticket()
+                merged_context["session_ticket"] = active_ticket.ticket
+            except Exception as exc:
+                self._logger.error("session_ticket_unavailable", error=str(exc))
+
+        if active_ticket:
+            if active_ticket.persona_id is not None:
+                merged_context.setdefault("persona_id", active_ticket.persona_id)
+            merged_context.setdefault("blaze_id", active_ticket.blaze_id)
+            if active_ticket.display_name:
+                merged_context.setdefault("persona_display_name", active_ticket.display_name)
         
         # --- Auth material ---
         if self._auth_pool:
@@ -408,6 +432,12 @@ class AuctionCollector:
         return bundle
 
     def _resolve_persona_id(self, context: Mapping[str, Any]) -> int:
+        if self.session_manager and self.session_manager._primary_ticket:
+            ticket = self.session_manager._primary_ticket
+            if ticket.persona_id is not None:
+                return ticket.persona_id
+            return ticket.blaze_id
+
         for key in ("persona_id", "personaId", "blaze_persona_id", "blaze_id"):
             value = context.get(key)
             if value is None:
@@ -416,9 +446,6 @@ class AuctionCollector:
                 return int(str(value))
             except (TypeError, ValueError):
                 self._logger.warning("persona_parse_failed", key=key, value=value)
-
-        if self.session_manager and self.session_manager._primary_ticket:
-            return self.session_manager._primary_ticket.blaze_id
 
         if self.settings.m26_blaze_id:
             try:

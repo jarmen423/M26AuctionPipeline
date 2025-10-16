@@ -15,6 +15,7 @@ from .collectors import AuctionCollector
 from .config import Settings, get_settings
 from .pipelines import AuctionPipeline
 from .storage import PostgresAuctionStore, RedisAuctionCache
+from .api.m26_service import Madden26ServiceClient, ServiceRequest
 
 __all__ = [
     "AuctionCollector",
@@ -23,4 +24,6 @@ __all__ = [
     "RedisAuctionCache",
     "Settings",
     "get_settings",
+    "Madden26ServiceClient",
+    "ServiceRequest",
 ]

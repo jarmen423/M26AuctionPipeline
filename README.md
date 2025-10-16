@@ -19,6 +19,8 @@ The service is configured through environment variables (prefixed with `COMPANIO
 - `COMPANION_POSTGRES_DSN`: Postgres DSN for historical storage.
 - `COMPANION_TOKENS_PATH`: Location of the persisted OAuth tokens file (defaults to `tokens.json`).
 - `COMPANION_SESSION_CONTEXT_PATH`: Location where the latest session ticket is stored (`research/captures/current_session_context.json`).
+- `COMPANION_M26_SERVICE_BASE_URL`: Override base URL for `madden26.service.easports.com` helper calls.
+- `COMPANION_M26_SERVICE_USER_AGENT`: User agent applied by the helper client.
 
 See `companion_collect/config.py` for the full list of tunables.
 
@@ -45,6 +47,16 @@ Populate your `.env` file, then run the pipeline:
 ```powershell
 python scripts/run_auction_pipeline.py
 ```
+
+### Binder probes via WAL
+
+To replay binder calls against `/wal/mca/Process`, reuse the collector stack by providing a binder payload:
+
+```powershell
+python scripts/fetch_binder_page.py --binder-command binder --payload-file binder_payload.json --output binder_response.json
+```
+
+`binder_payload.json` should contain the unescaped `requestPayload` object captured from the mobile app (the helper escapes it before sending). Use `--binder-command hub` for `GetHubEntryData` (command 9114) or pass explicit overrides via `--command-id` / `--command-name` when experimenting with other commands.
 
 ## Tests
 

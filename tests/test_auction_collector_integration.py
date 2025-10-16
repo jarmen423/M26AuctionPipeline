@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -28,9 +29,18 @@ def fake_token_and_session(monkeypatch):
     class FakeSessionManager:
         def __init__(self, token_manager):
             self.token_manager = token_manager
+            self._ticket = SimpleNamespace(
+                ticket="session-token",
+                persona_id=123,
+                blaze_id=123,
+                display_name="TestPersona",
+            )
+
+        async def ensure_primary_ticket(self):
+            return self._ticket
 
         async def get_session_ticket(self) -> str:
-            return "session-token"
+            return self._ticket.ticket
 
         async def create_session_ticket(
             self,
