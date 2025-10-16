@@ -553,7 +553,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument("--http-only", action="store_true")
     parser.add_argument("--tls-only", action="store_true")
     parser.add_argument("--keep-dupes", action="store_true")
-    parser.add_argument("--output-dir", type=Path, default=Path("/out"))
+    parser.add_argument("--output-dir", type=Path, default=Path("/tools/results.json"))
     parser.add_argument(
         "--user-agent",
         default="EA Endpoint Recon/1.0 (+https://ea.com)",

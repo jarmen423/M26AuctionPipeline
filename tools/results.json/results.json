@@ -1,0 +1,1045 @@
+[
+  {
+    "input": "maddennfl.beta.easports.com",
+    "host": "maddennfl.beta.easports.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.528668+00:00"
+  },
+  {
+    "input": "ldrun51.abn-iad.ea.com",
+    "host": "ldrun51.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.572228+00:00"
+  },
+  {
+    "input": "ldrun50.abn-iad.ea.com",
+    "host": "ldrun50.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.589734+00:00"
+  },
+  {
+    "input": "ldrun56.abn-iad.ea.com",
+    "host": "ldrun56.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.573934+00:00"
+  },
+  {
+    "input": "ldrun57.abn-iad.ea.com",
+    "host": "ldrun57.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.615136+00:00"
+  },
+  {
+    "input": "ldrun54.abn-iad.ea.com",
+    "host": "ldrun54.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.521266+00:00"
+  },
+  {
+    "input": "ldrun58.abn-iad.ea.com",
+    "host": "ldrun58.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.554372+00:00"
+  },
+  {
+    "input": "ldrun53.abn-iad.ea.com",
+    "host": "ldrun53.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.535105+00:00"
+  },
+  {
+    "input": "ldrun52.abn-iad.ea.com",
+    "host": "ldrun52.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.570321+00:00"
+  },
+  {
+    "input": "madden.cert.ondemand.easports.com",
+    "host": "madden.cert.ondemand.easports.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.587205+00:00"
+  },
+  {
+    "input": "ldrun55.abn-iad.ea.com",
+    "host": "ldrun55.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.687731+00:00"
+  },
+  {
+    "input": "ldrun60.abn-iad.ea.com",
+    "host": "ldrun60.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.631821+00:00"
+  },
+  {
+    "input": "ldrun64.abn-iad.ea.com",
+    "host": "ldrun64.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.720093+00:00"
+  },
+  {
+    "input": "ldrun63.abn-iad.ea.com",
+    "host": "ldrun63.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.738295+00:00"
+  },
+  {
+    "input": "ldrun68.abn-iad.ea.com",
+    "host": "ldrun68.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.752783+00:00"
+  },
+  {
+    "input": "ldrun61.abn-iad.ea.com",
+    "host": "ldrun61.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.791220+00:00"
+  },
+  {
+    "input": "ldrun66.abn-iad.ea.com",
+    "host": "ldrun66.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.789847+00:00"
+  },
+  {
+    "input": "ldrun62.abn-iad.ea.com",
+    "host": "ldrun62.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.898394+00:00"
+  },
+  {
+    "input": "ldrun67.abn-iad.ea.com",
+    "host": "ldrun67.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.837432+00:00"
+  },
+  {
+    "input": "ldrun70.abn-iad.ea.com",
+    "host": "ldrun70.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.841112+00:00"
+  },
+  {
+    "input": "ldrun69.abn-iad.ea.com",
+    "host": "ldrun69.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.904370+00:00"
+  },
+  {
+    "input": "ldrun73.abn-iad.ea.com",
+    "host": "ldrun73.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.973814+00:00"
+  },
+  {
+    "input": "ldrun79.abn-iad.ea.com",
+    "host": "ldrun79.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.024576+00:00"
+  },
+  {
+    "input": "ldrun75.abn-iad.ea.com",
+    "host": "ldrun75.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.955410+00:00"
+  },
+  {
+    "input": "ldrun81.abn-iad.ea.com",
+    "host": "ldrun81.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.038116+00:00"
+  },
+  {
+    "input": "ldrun77.abn-iad.ea.com",
+    "host": "ldrun77.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.005844+00:00"
+  },
+  {
+    "input": "ldrun74.abn-iad.ea.com",
+    "host": "ldrun74.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:48.971588+00:00"
+  },
+  {
+    "input": "ldrun71.abn-iad.ea.com",
+    "host": "ldrun71.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.004567+00:00"
+  },
+  {
+    "input": "ldrun76.abn-iad.ea.com",
+    "host": "ldrun76.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.040131+00:00"
+  },
+  {
+    "input": "ldrun80.abn-iad.ea.com",
+    "host": "ldrun80.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.195026+00:00"
+  },
+  {
+    "input": "ldrun85.abn-iad.ea.com",
+    "host": "ldrun85.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.195537+00:00"
+  },
+  {
+    "input": "ldrun82.abn-iad.ea.com",
+    "host": "ldrun82.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.069318+00:00"
+  },
+  {
+    "input": "ldrun78.abn-iad.ea.com",
+    "host": "ldrun78.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.191912+00:00"
+  },
+  {
+    "input": "ldrun87.abn-iad.ea.com",
+    "host": "ldrun87.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.251102+00:00"
+  },
+  {
+    "input": "ldrun83.abn-iad.ea.com",
+    "host": "ldrun83.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.192768+00:00"
+  },
+  {
+    "input": "ldrun88.abn-iad.ea.com",
+    "host": "ldrun88.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.287310+00:00"
+  },
+  {
+    "input": "ldrun84.abn-iad.ea.com",
+    "host": "ldrun84.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.288127+00:00"
+  },
+  {
+    "input": "eaogameweb09.eao.abn.ea.com",
+    "host": "eaogameweb09.eao.abn.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.370293+00:00"
+  },
+  {
+    "input": "ldrun90.abn-iad.ea.com",
+    "host": "ldrun90.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.286497+00:00"
+  },
+  {
+    "input": "eaogameweb08.eao.abn.ea.com",
+    "host": "eaogameweb08.eao.abn.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.403396+00:00"
+  },
+  {
+    "input": "eaogameweb07.eao.abn.ea.com",
+    "host": "eaogameweb07.eao.abn.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.401540+00:00"
+  },
+  {
+    "input": "ldrun89.abn-iad.ea.com",
+    "host": "ldrun89.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.354571+00:00"
+  },
+  {
+    "input": "ldrun86.abn-iad.ea.com",
+    "host": "ldrun86.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.368989+00:00"
+  },
+  {
+    "input": "eaogameweb06.eao.abn.ea.com",
+    "host": "eaogameweb06.eao.abn.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.508608+00:00"
+  },
+  {
+    "input": "chef.abn-iad.ea.com",
+    "host": "chef.abn-iad.ea.com",
+    "dns": {
+      "status": "NXDOMAIN",
+      "ips": [],
+      "is_private": false
+    },
+    "tls": {
+      "status": "SKIPPED"
+    },
+    "http": {
+      "status": "SKIPPED"
+    },
+    "timestamp": "2025-10-16T07:14:49.505813+00:00"
+  },
+  {
+    "input": "madden.api.easports.com",
+    "host": "madden.api.easports.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "54.229.248.237",
+        "54.216.61.232",
+        "52.31.172.104"
+      ],
+      "is_private": false,
+      "ptr": "ec2-54-229-248-237.eu-west-1.compute.amazonaws.com"
+    },
+    "tls": {
+      "status": "ERROR",
+      "error": "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1032)"
+    },
+    "http": {
+      "status": "ERROR",
+      "error": "Cannot connect to host madden.api.easports.com:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1032)')]"
+    },
+    "timestamp": "2025-10-16T07:14:48.555641+00:00"
+  },
+  {
+    "input": "madden.test.api.easports.com",
+    "host": "madden.test.api.easports.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "52.17.212.73",
+        "52.48.109.26",
+        "108.128.119.212"
+      ],
+      "is_private": false,
+      "ptr": "ec2-52-17-212-73.eu-west-1.compute.amazonaws.com"
+    },
+    "tls": {
+      "status": "ERROR",
+      "error": "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1032)"
+    },
+    "http": {
+      "status": "ERROR",
+      "error": "Cannot connect to host madden.test.api.easports.com:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1032)')]"
+    },
+    "timestamp": "2025-10-16T07:14:48.671402+00:00"
+  },
+  {
+    "input": "madden.load.api.easports.com",
+    "host": "madden.load.api.easports.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "54.247.172.65",
+        "52.211.221.54",
+        "54.75.109.151"
+      ],
+      "is_private": false,
+      "ptr": "ec2-54-247-172-65.eu-west-1.compute.amazonaws.com"
+    },
+    "tls": {
+      "status": "ERROR",
+      "error": "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1032)"
+    },
+    "http": {
+      "status": "ERROR",
+      "error": "Cannot connect to host madden.load.api.easports.com:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1032)')]"
+    },
+    "timestamp": "2025-10-16T07:14:48.569035+00:00"
+  },
+  {
+    "input": "madden.cert.api.easports.com",
+    "host": "madden.cert.api.easports.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "52.48.109.26",
+        "108.128.119.212",
+        "52.17.212.73"
+      ],
+      "is_private": false,
+      "ptr": "ec2-52-48-109-26.eu-west-1.compute.amazonaws.com"
+    },
+    "tls": {
+      "status": "ERROR",
+      "error": "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1032)"
+    },
+    "http": {
+      "status": "ERROR",
+      "error": "Cannot connect to host madden.cert.api.easports.com:443 ssl:True [SSLCertVerificationError: (1, '[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1032)')]"
+    },
+    "timestamp": "2025-10-16T07:14:48.716897+00:00"
+  },
+  {
+    "input": "uxdepot.abn-iad.ea.com",
+    "host": "uxdepot.abn-iad.ea.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "159.153.49.19"
+      ],
+      "is_private": false,
+      "ptr": "uxdepot.abn-iad.ea.com"
+    },
+    "tls": {
+      "status": "ERROR",
+      "error": "'SSLObject' object has no attribute 'get_peer_cert_chain'"
+    },
+    "http": {
+      "status": "OK",
+      "code": 401,
+      "server": "Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/8.2.7",
+      "via": null,
+      "time_ms": 1374,
+      "akamai": false
+    },
+    "timestamp": "2025-10-16T07:14:49.522015+00:00"
+  },
+  {
+    "input": "maddennfl.alpha.easports.com",
+    "host": "maddennfl.alpha.easports.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "159.153.219.198"
+      ],
+      "is_private": false,
+      "ptr": "www.worldonline.alpha.needforspeed.com"
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:48.585384+00:00"
+  },
+  {
+    "input": "www.madden.easports.com",
+    "host": "www.madden.easports.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "159.153.234.85"
+      ],
+      "is_private": false,
+      "ptr": "www.frwl.ea.com"
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:48.647843+00:00"
+  },
+  {
+    "input": "madden.easports.com",
+    "host": "madden.easports.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "159.153.234.85"
+      ],
+      "is_private": false,
+      "ptr": "www.frwl.ea.com"
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:48.648495+00:00"
+  },
+  {
+    "input": "569856-maddenlb3.ea.com",
+    "host": "569856-maddenlb3.ea.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "108.166.42.92"
+      ],
+      "is_private": false
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:48.529465+00:00"
+  },
+  {
+    "input": "maddennfl.easports.com",
+    "host": "maddennfl.easports.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "174.143.124.181"
+      ],
+      "is_private": false
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:48.717858+00:00"
+  },
+  {
+    "input": "betacsrapp01.beta.eao.abn-iad.ea.com",
+    "host": "betacsrapp01.beta.eao.abn-iad.ea.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "10.72.209.25"
+      ],
+      "is_private": true
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:49.514151+00:00"
+  },
+  {
+    "input": "647522-gosltmdb767.ea.com",
+    "host": "647522-gosltmdb767.ea.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "89.234.46.169"
+      ],
+      "is_private": false,
+      "ptr": "647522-gosltmdb767.ea.com"
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:49.511742+00:00"
+  },
+  {
+    "input": "472199-gosltapp353.ea.com",
+    "host": "472199-gosltapp353.ea.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "94.236.78.231"
+      ],
+      "is_private": false,
+      "ptr": "472199-gosltapp353.ea.com"
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:49.621851+00:00"
+  },
+  {
+    "input": "560010-gosprmdb0824.ea.com",
+    "host": "560010-gosprmdb0824.ea.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "108.166.45.72"
+      ],
+      "is_private": false
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:49.605808+00:00"
+  },
+  {
+    "input": "418450-gosprapp546.ea.com",
+    "host": "418450-gosprapp546.ea.com",
+    "dns": {
+      "status": "OK",
+      "ips": [
+        "37.188.104.37"
+      ],
+      "is_private": false,
+      "ptr": "418450-gosprapp546.ea.com"
+    },
+    "tls": {
+      "status": "TIMEOUT",
+      "error": "TLS timeout"
+    },
+    "http": {
+      "status": "TIMEOUT",
+      "error": "HTTP timeout"
+    },
+    "timestamp": "2025-10-16T07:14:49.510239+00:00"
+  }
+]
