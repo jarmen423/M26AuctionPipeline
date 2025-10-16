@@ -128,6 +128,11 @@ async def main():
         default=None,
         help="Explicit WAL blaze id override (requires --wal-product).",
     )
+    parser.add_argument(
+        "--skip-utas",
+        action="store_true",
+        help="Skip UTAS probe after minting the WAL session ticket.",
+    )
     args = parser.parse_args()
 
     print("=" * 80)
@@ -215,22 +220,27 @@ async def main():
 
         print(f"\nSession ticket minted (sid): {sid[:10]}...")
 
-        # Probe UTAS (chosen route first, then optional fallback)
-        utas_base = getattr(settings, "utas_base_url", "https://utas.mob.v2.madden.ea.com")
-        primary_route = chosen_route
+        route_used = chosen_route
+        header_mode = "skipped"
+        if args.skip_utas:
+            print("\nSkipping UTAS probe by request.")
+        else:
+            # Probe UTAS (chosen route first, then optional fallback)
+            utas_base = getattr(settings, "utas_base_url", "https://utas.mob.v2.madden.ea.com")
+            primary_route = chosen_route
 
-        print(f"\nProbing UTAS ({primary_route})...")
-        ok, header_mode, status, route_used = await _probe_utas(sid, utas_base, primary_route)
+            print(f"\nProbing UTAS ({primary_route})...")
+            ok, header_mode, status, route_used = await _probe_utas(sid, utas_base, primary_route)
 
-        if not ok and primary_route != "m25":
-            print("\nNo 200 on selected route; retrying on m25...")
-            ok, header_mode, status, route_used = await _probe_utas(sid, utas_base, "m25")
+            if not ok and primary_route != "m25":
+                print("\nNo 200 on selected route; retrying on m25...")
+                ok, header_mode, status, route_used = await _probe_utas(sid, utas_base, "m25")
 
-        if not ok:
-            print("\nUTAS probe failed on all variants. Ticket not persisted.")
-            return 1
+            if not ok:
+                print("\nUTAS probe failed on all variants. Ticket not persisted.")
+                return 1
 
-        print(f"\nUTAS probe success: route={route_used}, header_mode={header_mode}, status={status}")
+            print(f"\nUTAS probe success: route={route_used}, header_mode={header_mode}, status={status}")
 
         # Update context file 
         context_path = Path(settings.session_context_path)

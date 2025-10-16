@@ -8,8 +8,8 @@
 
 | ID | Command Name | Category | Purpose | Status |
 |----|--------------|----------|---------|--------|
-| 9114 | `Mobile_GetHubEntryData` | UI/Navigation | Hub/menu entry data | Known (not auction-related) |
-| 9121 | `Mobile_GetBinderPage` | Collection | Binder/collection page data | Known (not auction-related) |
+| 9114 | `GetHubEntryData` | UI/Navigation | Hub/menu entry data | Known (not auction-related) |
+| 9121 | `GetBinderPage` | Collection | Binder/collection page data | Known (not auction-related) |
 | **9153** | **`Mobile_SearchAuctions`** | **Auction Core** | **Initial auction search** | **✅ IMPLEMENTED** |
 | **9154** | **`Mobile_RefreshAuctionDetails`** | **Auction Streaming** | **Refresh specific auctions** | **🆕 NEW DISCOVERY** |
 | **9157** | **`Mobile_GetAuctionBids`** | **Auction Tracking** | **Get bid history/tracking** | **🆕 NEW DISCOVERY** |
