@@ -218,6 +218,33 @@ class SessionManager:
         madden_year = settings.wal_madden_year or settings.madden_year
         wal_blaze_header, wal_product_name = settings.resolved_wal_identifiers
 
+        # Allow persona context (selected via select_persona.py) to override defaults
+        persona_context_path = getattr(settings, "persona_context_path", None)
+        if persona_context_path:
+            try:
+                persona_data_path = Path(persona_context_path)
+                if persona_data_path.exists():
+                    with persona_data_path.open("r", encoding="utf-8") as handle:
+                        persona_context = json.load(handle)
+                    wal_blaze_override = persona_context.get("wal_blaze_id")
+                    wal_product_override = persona_context.get("wal_product_name")
+                    wal_year_override = persona_context.get("wal_madden_year")
+                    if wal_blaze_override:
+                        wal_blaze_header = wal_blaze_override
+                    if wal_product_override:
+                        wal_product_name = wal_product_override
+                    if wal_year_override and wal_year_override != settings.madden_year:
+                        self._logger.info(
+                            "wal_persona_year_override",
+                            wal_year=wal_year_override,
+                            default_year=settings.madden_year,
+                        )
+            except Exception as exc:  # pragma: no cover - defensive
+                self._logger.warning(
+                    "wal_persona_context_read_failed",
+                    error=str(exc),
+                )
+
         wal_product_env = os.getenv("WAL_PRODUCT")
         wal_blaze_env = os.getenv("WAL_BLAZE_ID")
         wal_base_env = os.getenv("WAL_BASE_URL")

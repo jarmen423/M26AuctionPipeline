@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     wal_product_name: str | None = None
     tokens_path: str = "tokens.json"
     session_context_path: str = "auction_data/current_session_context.json"
+    persona_context_path: str = "auction_data/persona_context.json"
     auth_pool_path: str = "research/captures/auth_pool.json"
 
     # Storage
