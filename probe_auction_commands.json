@@ -1,0 +1,53 @@
+{
+  "session_ticket": "00000128e1249282_EGb58ALaY6DPl$W7$CLPnzU8MvEh*C2Yp*8CN41cJrU=",
+  "persona_id": 895211801,
+  "timestamp": "2025-10-17T03:57:34.738545+00:00",
+  "results": [
+    {
+      "command_id": 9114,
+      "command_name": "GetHubEntryData",
+      "status": 404,
+      "snippet": "<error>     <errorcode>404</errorcode>     <errormessage>The Server Information was not found for game madden-2026-xbsx-gen5 resolved as madden-2026-xbsx-gen5</errormessage> </error>",
+      "payload": {}
+    },
+    {
+      "command_id": 9121,
+      "command_name": "GetBinderPage",
+      "status": 404,
+      "snippet": "<error>     <errorcode>404</errorcode>     <errormessage>The Server Information was not found for game madden-2026-xbsx-gen5 resolved as madden-2026-xbsx-gen5</errormessage> </error>",
+      "payload": {
+        "offset": 0,
+        "count": 25
+      }
+    },
+    {
+      "command_id": 9153,
+      "command_name": "Mobile_SearchAuctions",
+      "status": 404,
+      "snippet": "<error>     <errorcode>404</errorcode>     <errormessage>The Server Information was not found for game madden-2026-xbsx-gen5 resolved as madden-2026-xbsx-gen5</errormessage> </error>",
+      "payload": {
+        "filters": [],
+        "itemName": ""
+      }
+    },
+    {
+      "command_id": 9154,
+      "command_name": "Mobile_RefreshAuctionDetails",
+      "status": 404,
+      "snippet": "<error>     <errorcode>404</errorcode>     <errormessage>The Server Information was not found for game madden-2026-xbsx-gen5 resolved as madden-2026-xbsx-gen5</errormessage> </error>",
+      "payload": {
+        "auctionIdList": []
+      }
+    },
+    {
+      "command_id": 9157,
+      "command_name": "Mobile_GetAuctionBids",
+      "status": 404,
+      "snippet": "<error>     <errorcode>404</errorcode>     <errormessage>The Server Information was not found for game madden-2026-xbsx-gen5 resolved as madden-2026-xbsx-gen5</errormessage> </error>",
+      "payload": {
+        "offset": 0,
+        "count": 50
+      }
+    }
+  ]
+}
